@@ -10,6 +10,18 @@
         </a>
     </div>
 
+    <div class="flex flex-wrap gap-2 mb-4">
+    <a href="{{ route('print.returns', request()->query()) }}" target="_blank"
+       class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Print</a>
+
+    <a href="{{ route('export.returns.csv', request()->query()) }}"
+       class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Export CSV</a>
+
+    <a href="{{ route('export.returns.pdf', request()->query()) }}"
+       class="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800">Export PDF</a>
+</div>
+
+
     <table class="w-full bg-white border rounded-xl">
         <thead class="bg-gray-50">
             <tr>

@@ -65,6 +65,35 @@ class ExportController extends Controller
         return $q;
     }
 
+    private function returnsQuery(Request $request)
+{
+    $q = \App\Models\ReturnLine::query()
+        ->select([
+            'return_lines.*',
+            'return_transactions.return_date',
+            'return_transactions.type',
+            'return_transactions.party',
+            'return_transactions.reference_no',
+            'groups.group_code',
+            'groups.group_name',
+            'items.item_code',
+            'items.name as item_name',
+        ])
+        ->join('return_transactions', 'return_transactions.id', '=', 'return_lines.return_transaction_id')
+        ->join('items', 'items.id', '=', 'return_lines.item_id')
+        ->join('groups', 'groups.id', '=', 'items.group_id')
+        ->orderByDesc('return_transactions.return_date')
+        ->orderByDesc('return_lines.id');
+
+    if ($request->filled('group_id')) $q->where('groups.id', $request->group_id);
+    if ($request->filled('item_id')) $q->where('items.id', $request->item_id);
+    if ($request->filled('from')) $q->whereDate('return_transactions.return_date', '>=', $request->from);
+    if ($request->filled('to')) $q->whereDate('return_transactions.return_date', '<=', $request->to);
+
+    return $q;
+}
+
+
     // PRINT
 
     public function printPurchases(Request $request)
@@ -84,6 +113,12 @@ class ExportController extends Controller
         $rows = $stock->stockSummary();
         return view('print.stock', compact('rows'));
     }
+
+    public function printReturns(Request $request)
+{
+    $rows = $this->returnsQuery($request)->limit(5000)->get();
+    return view('print.returns', compact('rows'));
+}
 
     // CSV
 
@@ -199,6 +234,45 @@ class ExportController extends Controller
         return Response::stream($callback, 200, $headers);
     }
 
+    public function csvReturns(Request $request)
+{
+    $rows = $this->returnsQuery($request)->limit(200000)->get();
+
+    $filename = 'returns_' . now()->format('Ymd_His') . '.csv';
+
+    $headers = [
+        'Content-Type' => 'text/csv',
+        'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+    ];
+
+    $callback = function () use ($rows) {
+        $out = fopen('php://output', 'w');
+
+        fputcsv($out, [
+            'Date','Type','Group Code','Item Code','Item Name','Qty','Price','Total','Party','Reference'
+        ]);
+
+        foreach ($rows as $r) {
+            fputcsv($out, [
+                $r->return_date,
+                $r->type === 'IN' ? 'INWARD' : 'OUTWARD',
+                $r->group_code,
+                $r->item_code,
+                $r->item_name,
+                $r->quantity,
+                number_format((float)$r->unit_price, 2, '.', ''),
+                number_format((float)$r->line_total, 2, '.', ''),
+                $r->party,
+                $r->reference_no,
+            ]);
+        }
+
+        fclose($out);
+    };
+
+    return \Illuminate\Support\Facades\Response::stream($callback, 200, $headers);
+}
+
     // PDF
 
     public function pdfPurchases(Request $request)
@@ -221,4 +295,11 @@ class ExportController extends Controller
         $pdf = Pdf::loadView('pdf.stock', compact('rows'))->setPaper('a4', 'landscape');
         return $pdf->download('stock_' . now()->format('Ymd_His') . '.pdf');
     }
+
+    public function pdfReturns(Request $request)
+{
+    $rows = $this->returnsQuery($request)->limit(5000)->get();
+    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.returns', compact('rows'))->setPaper('a4', 'landscape');
+    return $pdf->download('returns_' . now()->format('Ymd_His') . '.pdf');
+}
 }

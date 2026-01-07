@@ -68,16 +68,19 @@ Route::middleware(['auth'])->group(function() {
     Route::get('/print/purchases', [\App\Http\Controllers\ExportController::class, 'printPurchases'])->name('print.purchases');
     Route::get('/print/issues', [\App\Http\Controllers\ExportController::class, 'printIssues'])->name('print.issues');
     Route::get('/print/stock', [\App\Http\Controllers\ExportController::class, 'printStock'])->name('print.stock');
+    Route::get('/print/returns', [\App\Http\Controllers\ExportController::class, 'printReturns'])->name('print.returns');
 
     // CSV exports
     Route::get('/export/purchases.csv', [\App\Http\Controllers\ExportController::class, 'csvPurchases'])->name('export.purchases.csv');
     Route::get('/export/issues.csv', [\App\Http\Controllers\ExportController::class, 'csvIssues'])->name('export.issues.csv');
     Route::get('/export/stock.csv', [\App\Http\Controllers\ExportController::class, 'csvStock'])->name('export.stock.csv');
+    Route::get('/export/returns.csv', [\App\Http\Controllers\ExportController::class, 'csvReturns'])->name('export.returns.csv');
 
     // PDF exports
     Route::get('/export/purchases.pdf', [\App\Http\Controllers\ExportController::class, 'pdfPurchases'])->name('export.purchases.pdf');
     Route::get('/export/issues.pdf', [\App\Http\Controllers\ExportController::class, 'pdfIssues'])->name('export.issues.pdf');
     Route::get('/export/stock.pdf', [\App\Http\Controllers\ExportController::class, 'pdfStock'])->name('export.stock.pdf');
+    Route::get('/export/returns.pdf', [\App\Http\Controllers\ExportController::class, 'pdfReturns'])->name('export.returns.pdf');
 });
 
 

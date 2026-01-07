@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Returns PDF</title>
+    <style>
+        body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 10px; color: #111; }
+        h2 { margin: 0 0 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 5px; }
+        th { background: #f3f3f3; text-align: left; }
+        .right { text-align: right; }
+    </style>
+</head>
+<body>
+    <h2>Returns</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Group</th>
+            <th>Item</th>
+            <th class="right">Qty</th>
+            <th class="right">Price</th>
+            <th class="right">Total</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach($rows as $r)
+            <tr>
+                <td>{{ $r->return_date }}</td>
+                <td>{{ $r->type === 'IN' ? 'INWARD' : 'OUTWARD' }}</td>
+                <td>{{ $r->group_code }}</td>
+                <td>{{ $r->item_code }} - {{ $r->item_name }}</td>
+                <td class="right">{{ $r->quantity }}</td>
+                <td class="right">{{ number_format($r->unit_price, 2) }}</td>
+                <td class="right">{{ number_format($r->line_total, 2) }}</td>
+            </tr>
+        @endforeach
+        </tbody>
+    </table>
+</body>
+</html>

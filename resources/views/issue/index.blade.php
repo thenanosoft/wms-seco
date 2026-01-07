@@ -14,7 +14,7 @@
         </a>
     </div>
 
-    <div class="flex flex-wrap gap-2">
+    <div class="flex flex-wrap gap-2 mb-4">
     <a href="{{ route('print.issues', request()->query()) }}" target="_blank"
        class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Print</a>
 

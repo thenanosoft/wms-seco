@@ -43,7 +43,7 @@
                 <div class="mt-4">
                     <div class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Admin</div>
 
-                    <a href="#"
+                    <a href="{{ route('stock.index') }}"
                        class="mt-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">
                         Stock & Reports
                     </a>

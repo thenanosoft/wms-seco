@@ -9,6 +9,7 @@ use App\Models\Group;
 use App\Models\Item;
 use App\Services\StockService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ReturnController extends Controller
 {
@@ -34,7 +35,23 @@ class ReturnController extends Controller
         $data = $request->validated();
 
         DB::transaction(function () use ($data, $stock, $request) {
+            // Stock validation for OUT returns (audit-safe)
+if (($data['type'] ?? null) === 'OUT') {
+    foreach ($data['lines'] as $i => $line) {
+        $itemId = (int) $line['item_id'];
+        $qty = (float) $line['quantity'];
 
+        $available = $stock->getAvailableStock($itemId);
+
+        if ($qty > $available) {
+            throw ValidationException::withMessages([
+                "lines.$i.quantity" => "Not enough stock to return outward. Available: {$available}",
+            ]);
+        }
+    }
+}
+
+            
             $ret = ReturnTransaction::create([
                 'return_date' => $data['return_date'],
                 'type' => $data['type'],
