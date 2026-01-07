@@ -82,4 +82,46 @@ class PurchaseController extends Controller
                 ->with('status', 'Purchase saved successfully.');
         });
     }
+    public function itemsIndex(Request $request)
+{
+    $q = \App\Models\PurchaseLine::query()
+        ->select([
+            'purchase_lines.*',
+            'purchases.purchase_date',
+            'groups.group_code',
+            'groups.group_name',
+            'items.item_code',
+            'items.name as item_name',
+        ])
+        ->join('purchases', 'purchases.id', '=', 'purchase_lines.purchase_id')
+        ->join('items', 'items.id', '=', 'purchase_lines.item_id')
+        ->join('groups', 'groups.id', '=', 'items.group_id')
+        ->orderByDesc('purchases.purchase_date')
+        ->orderByDesc('purchase_lines.id');
+
+    // Filters
+    if ($request->filled('group_id')) {
+        $q->where('groups.id', $request->group_id);
+    }
+
+    if ($request->filled('item_id')) {
+        $q->where('items.id', $request->item_id);
+    }
+
+    if ($request->filled('from')) {
+        $q->whereDate('purchases.purchase_date', '>=', $request->from);
+    }
+
+    if ($request->filled('to')) {
+        $q->whereDate('purchases.purchase_date', '<=', $request->to);
+    }
+
+    $rows = $q->paginate(20)->withQueryString();
+
+    $groups = \App\Models\Group::orderBy('group_code')->get();
+    $items = \App\Models\Item::orderBy('item_code')->get();
+
+    return view('purchase.items-index', compact('rows', 'groups', 'items'));
+}
+
 }

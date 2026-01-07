@@ -1,0 +1,88 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\StoreReturnRequest;
+use App\Models\ReturnTransaction;
+use App\Models\ReturnLine;
+use App\Models\Group;
+use App\Models\Item;
+use App\Services\StockService;
+use Illuminate\Support\Facades\DB;
+
+class ReturnController extends Controller
+{
+    public function index()
+    {
+        $returns = ReturnTransaction::with('creator')
+            ->orderByDesc('return_date')
+            ->paginate(15);
+
+        return view('returns.index', compact('returns'));
+    }
+
+    public function create()
+    {
+        $groups = Group::orderBy('group_code')->get();
+        $items = Item::orderBy('item_code')->get();
+
+        return view('returns.create', compact('groups','items'));
+    }
+
+    public function store(StoreReturnRequest $request, StockService $stock)
+    {
+        $data = $request->validated();
+
+        DB::transaction(function () use ($data, $stock, $request) {
+
+            $ret = ReturnTransaction::create([
+                'return_date' => $data['return_date'],
+                'type' => $data['type'],
+                'party' => $data['party'] ?? null,
+                'reference_no' => $data['reference_no'] ?? null,
+                'notes' => $data['notes'] ?? null,
+                'created_by' => $request->user()->id,
+            ]);
+
+            foreach ($data['lines'] as $line) {
+
+                $total = $line['quantity'] * ($line['unit_price'] ?? 0);
+
+                $rl = ReturnLine::create([
+                    'return_transaction_id' => $ret->id,
+                    'item_id' => $line['item_id'],
+                    'specification' => $line['specification'] ?? null,
+                    'unit_price' => $line['unit_price'] ?? 0,
+                    'quantity' => $line['quantity'],
+                    'line_total' => $total,
+                ]);
+
+                if ($ret->type === 'IN') {
+                    $stock->addReturnInLedger([
+                        'txn_date' => $ret->return_date,
+                        'ref_id' => $ret->id,
+                        'ref_line_id' => $rl->id,
+                        'item_id' => $rl->item_id,
+                        'quantity' => $rl->quantity,
+                        'unit_price' => $rl->unit_price,
+                        'specification' => $rl->specification,
+                        'created_by' => $request->user()->id,
+                    ]);
+                } else {
+                    $stock->addReturnOutLedger([
+                        'txn_date' => $ret->return_date,
+                        'ref_id' => $ret->id,
+                        'ref_line_id' => $rl->id,
+                        'item_id' => $rl->item_id,
+                        'quantity' => $rl->quantity,
+                        'unit_price' => $rl->unit_price,
+                        'specification' => $rl->specification,
+                        'created_by' => $request->user()->id,
+                    ]);
+                }
+            }
+        });
+
+        return redirect()->route('returns.index')->with('status','Return saved successfully');
+    }
+}

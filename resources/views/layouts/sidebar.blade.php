@@ -28,12 +28,12 @@
                     Purchase (Inward)
                 </a>
 
-                <a href="#"
+                <a href="{{ route('issues.index') }}"
                    class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">
                     Issue (Outward)
                 </a>
 
-                <a href="#"
+                <a href="{{ route('returns.index') }}"
                    class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">
                     Returns
                 </a>

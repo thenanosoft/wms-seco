@@ -15,16 +15,41 @@ Route::middleware(['auth'])->group(function() {
     ->name('purchases.index')
     ->middleware(['role:admin,store_helper']);
 
-Route::get('/purchases/create', [\App\Http\Controllers\PurchaseController::class, 'create'])
+    Route::get('/purchases/items', [\App\Http\Controllers\PurchaseController::class, 'itemsIndex'])
+    ->name('purchases.items.index')
+    ->middleware(['auth', 'role:admin']);
+
+    Route::get('/purchases/create', [\App\Http\Controllers\PurchaseController::class, 'create'])
     ->name('purchases.create')
     ->middleware(['role:admin,store_helper']);
 
-Route::post('/purchases', [\App\Http\Controllers\PurchaseController::class, 'store'])
+    Route::post('/purchases', [\App\Http\Controllers\PurchaseController::class, 'store'])
     ->name('purchases.store')
     ->middleware(['role:admin,store_helper']);
 
+    Route::get('/issues', [\App\Http\Controllers\IssueController::class, 'index'])
+    ->name('issues.index')
+    ->middleware(['role:admin,store_helper']);
+
+    Route::get('/issues/create', [\App\Http\Controllers\IssueController::class, 'create'])
+    ->name('issues.create')
+    ->middleware(['role:admin,store_helper']);
+
+    Route::post('/issues', [\App\Http\Controllers\IssueController::class, 'store'])
+    ->name('issues.store')
+    ->middleware(['role:admin,store_helper']);
+
+    Route::get('/stock', [\App\Http\Controllers\StockController::class, 'index'])
+    ->name('stock.index')
+    ->middleware(['role:admin']);
+
+    Route::get('/returns', [\App\Http\Controllers\ReturnController::class,'index'])->name('returns.index')->middleware(['role:admin,store_helper']);
+    Route::get('/returns/create', [\App\Http\Controllers\ReturnController::class,'create'])->name('returns.create')->middleware(['role:admin,store_helper']);
+    Route::post('/returns', [\App\Http\Controllers\ReturnController::class,'store'])->name('returns.store')->middleware(['role:admin,store_helper']);
+
+
 // Admin only: Groups and Items
-Route::middleware(['role:admin'])->group(function () {
+    Route::middleware(['role:admin'])->group(function () {
     Route::get('/groups', [\App\Http\Controllers\GroupController::class, 'index'])->name('groups.index');
     Route::get('/groups/create', [\App\Http\Controllers\GroupController::class, 'create'])->name('groups.create');
     Route::post('/groups', [\App\Http\Controllers\GroupController::class, 'store'])->name('groups.store');
@@ -38,6 +63,21 @@ Route::middleware(['role:admin'])->group(function () {
     Route::get('/items/{item}/edit', [\App\Http\Controllers\ItemController::class, 'edit'])->name('items.edit');
     Route::put('/items/{item}', [\App\Http\Controllers\ItemController::class, 'update'])->name('items.update');
     Route::delete('/items/{item}', [\App\Http\Controllers\ItemController::class, 'destroy'])->name('items.destroy');
+
+    // Print views
+    Route::get('/print/purchases', [\App\Http\Controllers\ExportController::class, 'printPurchases'])->name('print.purchases');
+    Route::get('/print/issues', [\App\Http\Controllers\ExportController::class, 'printIssues'])->name('print.issues');
+    Route::get('/print/stock', [\App\Http\Controllers\ExportController::class, 'printStock'])->name('print.stock');
+
+    // CSV exports
+    Route::get('/export/purchases.csv', [\App\Http\Controllers\ExportController::class, 'csvPurchases'])->name('export.purchases.csv');
+    Route::get('/export/issues.csv', [\App\Http\Controllers\ExportController::class, 'csvIssues'])->name('export.issues.csv');
+    Route::get('/export/stock.csv', [\App\Http\Controllers\ExportController::class, 'csvStock'])->name('export.stock.csv');
+
+    // PDF exports
+    Route::get('/export/purchases.pdf', [\App\Http\Controllers\ExportController::class, 'pdfPurchases'])->name('export.purchases.pdf');
+    Route::get('/export/issues.pdf', [\App\Http\Controllers\ExportController::class, 'pdfIssues'])->name('export.issues.pdf');
+    Route::get('/export/stock.pdf', [\App\Http\Controllers\ExportController::class, 'pdfStock'])->name('export.stock.pdf');
 });
 
 
