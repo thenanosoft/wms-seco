@@ -47,6 +47,27 @@ Route::middleware(['auth'])->group(function() {
     Route::get('/returns/create', [\App\Http\Controllers\ReturnController::class,'create'])->name('returns.create')->middleware(['role:admin,store_helper']);
     Route::post('/returns', [\App\Http\Controllers\ReturnController::class,'store'])->name('returns.store')->middleware(['role:admin,store_helper']);
 
+    Route::get('/settings', [\App\Http\Controllers\SettingsController::class, 'index'])
+    ->name('settings.index')
+    ->middleware(['auth','role:admin']);
+
+    Route::post('/settings', [\App\Http\Controllers\SettingsController::class, 'update'])
+    ->name('settings.update')
+    ->middleware(['auth','role:admin']);
+
+    Route::get('/backup', [\App\Http\Controllers\BackupController::class,'index'])
+    ->name('backup.index')
+    ->middleware(['auth','role:admin']);
+
+    Route::post('/backup/manual', [\App\Http\Controllers\BackupController::class,'manualBackup'])
+    ->name('backup.manual')
+    ->middleware(['auth','role:admin']);
+
+    Route::post('/backup/restore', [\App\Http\Controllers\BackupController::class,'restore'])
+    ->name('backup.restore')
+    ->middleware(['auth','role:admin']);
+
+
 
 // Admin only: Groups and Items
     Route::middleware(['role:admin'])->group(function () {
@@ -63,6 +84,8 @@ Route::middleware(['auth'])->group(function() {
     Route::get('/items/{item}/edit', [\App\Http\Controllers\ItemController::class, 'edit'])->name('items.edit');
     Route::put('/items/{item}', [\App\Http\Controllers\ItemController::class, 'update'])->name('items.update');
     Route::delete('/items/{item}', [\App\Http\Controllers\ItemController::class, 'destroy'])->name('items.destroy');
+    Route::get('/items/{item}/stock', [\App\Http\Controllers\ItemStockController::class, 'show'])
+    ->name('items.stock.show');
 
     // Print views
     Route::get('/print/purchases', [\App\Http\Controllers\ExportController::class, 'printPurchases'])->name('print.purchases');

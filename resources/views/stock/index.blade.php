@@ -25,17 +25,33 @@
                     <th class="px-4 py-3 text-right">Total In</th>
                     <th class="px-4 py-3 text-right">Total Out</th>
                     <th class="px-4 py-3 text-right">Balance</th>
+                    <th class="px-4 py-3 text-left">Low Stock</th>
                 </tr>
             </thead>
             <tbody class="divide-y">
                 @foreach($rows as $r)
-                    <tr>
+                    <tr class="{{ $r->is_low ? 'bg-red-50' : '' }}">
                         <td class="px-4 py-2">{{ $r->group_code }}</td>
-                        <td class="px-4 py-2">{{ $r->item_code }} – {{ $r->item_name }}</td>
+                        <td class="px-4 py-2"><a class="text-blue-700 hover:underline"
+   href="{{ route('items.stock.show', $r->item_id) }}">
+   {{ $r->item_code }} – {{ $r->item_name }}
+</a></td>
                         <td class="px-4 py-2 text-right">{{ $r->total_in }}</td>
                         <td class="px-4 py-2 text-right">{{ $r->total_out }}</td>
                         <td class="px-4 py-2 text-right font-semibold">
                             {{ $r->balance }}
+                        </td>
+                        <td class="px-4 py-2">
+                            @if($r->is_low)
+                                <span class="inline-block bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
+                                    Low
+                                </span>
+                                <span> (Min: {{ $r->threshold_used }})</span>
+                            @else
+                                <span class="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                                    OK
+                                </span>
+                            @endif
                         </td>
                     </tr>
                 @endforeach

@@ -42,7 +42,7 @@ class DashboardController extends Controller
 
         $itemsCount = Item::count();
 
-        return view('dashboard.dashboard', compact('purchase','issue','returnIn','returnOut','itemsCount'));
+        return view('dashboard.index', compact('purchase','issue','returnIn','returnOut','itemsCount'));
     }
 
     

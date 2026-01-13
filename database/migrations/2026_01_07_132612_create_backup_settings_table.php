@@ -10,10 +10,10 @@ return new class extends Migration {
         Schema::create('backup_settings', function (Blueprint $table) {
             $table->id();
             $table->boolean('enabled')->default(false);
-            $table->string('frequency')->default('daily'); // daily or weekly
-            $table->string('backup_path')->nullable(); // local folder path
-            $table->unsignedTinyInteger('weekly_day')->default(1); // 1=Mon ... 7=Sun
-            $table->string('time_hm')->default('02:00'); // 24h format HH:MM
+            $table->enum('frequency', ['daily','weekly'])->default('daily');
+            $table->unsignedTinyInteger('weekly_day')->default(1); // 1 Mon ... 7 Sun
+            $table->string('time_hm')->default('02:00'); // HH:MM
+            $table->string('backup_path')->nullable(); // local folder
             $table->timestamps();
         });
     }
@@ -23,4 +23,5 @@ return new class extends Migration {
         Schema::dropIfExists('backup_settings');
     }
 };
+
 

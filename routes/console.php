@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('wms:backup')->everyMinute();
+Schedule::command('wms:send-backup')->everyMinute();
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());

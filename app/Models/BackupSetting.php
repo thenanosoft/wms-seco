@@ -6,7 +6,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class BackupSetting extends Model
 {
-    protected $fillable = [
-        'enabled','frequency','backup_path','weekly_day','time_hm'
-    ];
+    protected $fillable = ['enabled','frequency','weekly_day','time_hm','backup_path'];
 }

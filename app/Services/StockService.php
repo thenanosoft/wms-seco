@@ -150,5 +150,36 @@ public function addReturnOutLedger(array $data)
 
 
 
+public function stockSummaryWithLowFlag(): array
+{
+    $defaultThreshold = (float) \App\Models\AppSetting::get('default_low_stock_threshold', 0);
+
+    $rows = \App\Models\StockLedger::query()
+        ->selectRaw('
+            items.id as item_id,
+            items.item_code,
+            items.name as item_name,
+            items.low_stock_threshold,
+            groups.group_code,
+            COALESCE(SUM(qty_in),0) as total_in,
+            COALESCE(SUM(qty_out),0) as total_out,
+            (COALESCE(SUM(qty_in),0) - COALESCE(SUM(qty_out),0)) as balance
+        ')
+        ->join('items', 'items.id', '=', 'stock_ledger.item_id')
+        ->join('groups', 'groups.id', '=', 'items.group_id')
+        ->groupBy('items.id','items.item_code','items.name','items.low_stock_threshold','groups.group_code')
+        ->orderBy('groups.group_code')
+        ->orderBy('items.item_code')
+        ->get();
+
+    return $rows->map(function ($r) use ($defaultThreshold) {
+        $threshold = $r->low_stock_threshold !== null ? (float)$r->low_stock_threshold : $defaultThreshold;
+        $r->threshold_used = $threshold;
+        $r->is_low = $threshold > 0 ? ((float)$r->balance <= $threshold) : false;
+        return $r;
+    })->all();
+}
+
+
 
 }
