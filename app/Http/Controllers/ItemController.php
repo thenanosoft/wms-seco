@@ -38,12 +38,20 @@ class ItemController extends Controller
         return view('items.create', compact('groups'));
     }
 
-    public function store(StoreItemRequest $request)
-    {
-        Item::create($request->validated());
+    public function store(Request $request)
+{
+    $validated = $request->validate([
+        'group_id' => ['required', 'exists:groups,id'],
+        'item_code' => ['required', 'string', 'max:50'],
+        'name' => ['required', 'string', 'max:255'],
+        'default_spec' => ['nullable', 'string'],
+        'low_stock_threshold' => ['nullable', 'numeric', 'min:0'],
+    ]);
 
-        return redirect()->route('items.index')->with('status', 'Item created successfully.');
-    }
+    Item::create($validated);
+
+    return redirect()->route('items.index')->with('success', 'Item created successfully.');
+}
 
     public function edit(Item $item)
     {
@@ -51,12 +59,20 @@ class ItemController extends Controller
         return view('items.edit', compact('item', 'groups'));
     }
 
-    public function update(UpdateItemRequest $request, Item $item)
-    {
-        $item->update($request->validated());
+    public function update(Request $request, Item $item)
+{
+    $validated = $request->validate([
+        'group_id' => ['required', 'exists:groups,id'],
+        'item_code' => ['required', 'string', 'max:50'],
+        'name' => ['required', 'string', 'max:255'],
+        'default_spec' => ['nullable', 'string'],
+        'low_stock_threshold' => ['nullable', 'numeric', 'min:0'],
+    ]);
 
-        return redirect()->route('items.index')->with('status', 'Item updated successfully.');
-    }
+    $item->update($validated);
+
+    return redirect()->route('items.index')->with('success', 'Item updated successfully.');
+}
 
     public function destroy(Item $item)
     {
