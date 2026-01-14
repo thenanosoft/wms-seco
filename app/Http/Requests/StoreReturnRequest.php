@@ -26,4 +26,30 @@ class StoreReturnRequest extends FormRequest
             'lines.*.unit_price' => ['nullable','numeric','min:0'],
         ];
     }
+
+    public function withValidator($validator)
+{
+    $validator->after(function ($validator) {
+        $lines = $this->input('lines', []);
+        $seen = [];
+
+        foreach ($lines as $i => $line) {
+            $itemId = $line['item_id'] ?? null;
+            $groupId = $line['group_id'] ?? null;
+
+            if (!$itemId || !$groupId) continue;
+
+            if (isset($seen[$itemId])) {
+                $validator->errors()->add("lines.$i.item_id", "This item is already added in another line.");
+            }
+            $seen[$itemId] = true;
+
+            $exists = \App\Models\Item::where('id', $itemId)->where('group_id', $groupId)->exists();
+            if (!$exists) {
+                $validator->errors()->add("lines.$i.group_id", "Selected item does not belong to selected group.");
+            }
+        }
+    });
+}
+
 }

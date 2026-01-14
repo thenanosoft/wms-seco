@@ -155,15 +155,38 @@ public function stockSummaryWithLowFlag(): array
     $defaultThreshold = (float) \App\Models\AppSetting::get('default_low_stock_threshold', 0);
 
     $rows = \App\Models\StockLedger::query()
+        ->from('stock_ledger')
         ->selectRaw('
             items.id as item_id,
             items.item_code,
             items.name as item_name,
             items.low_stock_threshold,
             groups.group_code,
-            COALESCE(SUM(qty_in),0) as total_in,
-            COALESCE(SUM(qty_out),0) as total_out,
-            (COALESCE(SUM(qty_in),0) - COALESCE(SUM(qty_out),0)) as balance
+
+            COALESCE(SUM(stock_ledger.qty_in),0) as total_in,
+            COALESCE(SUM(stock_ledger.qty_out),0) as total_out,
+            (COALESCE(SUM(stock_ledger.qty_in),0) - COALESCE(SUM(stock_ledger.qty_out),0)) as balance,
+
+            -- Weighted avg purchase price (PURCHASE only)
+            (
+              CASE
+                WHEN COALESCE(SUM(CASE WHEN stock_ledger.txn_type = "PURCHASE" THEN stock_ledger.qty_in ELSE 0 END),0) = 0
+                THEN 0
+                ELSE
+                  COALESCE(SUM(CASE WHEN stock_ledger.txn_type = "PURCHASE" THEN stock_ledger.qty_in * stock_ledger.unit_price ELSE 0 END),0)
+                  /
+                  COALESCE(SUM(CASE WHEN stock_ledger.txn_type = "PURCHASE" THEN stock_ledger.qty_in ELSE 0 END),0)
+              END
+            ) as avg_purchase_price,
+
+            -- Last purchase price
+            (
+              SELECT sl2.unit_price
+              FROM stock_ledger sl2
+              WHERE sl2.item_id = items.id AND sl2.txn_type = "PURCHASE"
+              ORDER BY sl2.txn_date DESC, sl2.id DESC
+              LIMIT 1
+            ) as last_purchase_price
         ')
         ->join('items', 'items.id', '=', 'stock_ledger.item_id')
         ->join('groups', 'groups.id', '=', 'items.group_id')
@@ -174,11 +197,24 @@ public function stockSummaryWithLowFlag(): array
 
     return $rows->map(function ($r) use ($defaultThreshold) {
         $threshold = $r->low_stock_threshold !== null ? (float)$r->low_stock_threshold : $defaultThreshold;
+        $balance = (float)$r->balance;
+
         $r->threshold_used = $threshold;
-        $r->is_low = $threshold > 0 ? ((float)$r->balance <= $threshold) : false;
+        $r->is_low = $threshold > 0 ? ($balance <= $threshold) : false;
+
+        $last = (float)($r->last_purchase_price ?? 0);
+        $avg  = (float)($r->avg_purchase_price ?? 0);
+
+        // Value based on LAST purchase price (simple and stable)
+        $r->stock_value_last = round($balance * $last, 2);
+
+        // Value based on AVG purchase price (useful for costing)
+        $r->stock_value_avg = round($balance * $avg, 2);
+
         return $r;
     })->all();
 }
+
 
 
 
