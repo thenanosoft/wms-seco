@@ -8,15 +8,7 @@ class StoreReturnRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        if (!auth()->check()) return false;
-
-        // Only admin can do RETURN_OUT. Helper can only do RETURN_IN.
-        $type = $this->input('type');
-        if ($type === 'OUT') {
-            return auth()->user()?->role === 'admin';
-        }
-
-        return true;
+        return auth()->check();
     }
 
     public function rules(): array

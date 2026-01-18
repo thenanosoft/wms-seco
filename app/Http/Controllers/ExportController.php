@@ -4,13 +4,32 @@ namespace App\Http\Controllers;
 
 use App\Models\IssueLine;
 use App\Models\PurchaseLine;
+use App\Models\IssueReturnLine;
+use App\Models\PurchaseReturnLine;
+use App\Models\StockLedger;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExportController extends Controller
 {
+
+    private function streamCsv(string $filename, array $headerRow, \Closure $rowWriter)
+    {
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ];
+
+        return Response::stream(function () use ($headerRow, $rowWriter) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, $headerRow);
+            $rowWriter($out);
+            fclose($out);
+        }, 200, $headers);
+    }
     private function purchasesQuery(Request $request)
     {
         $q = PurchaseLine::query()
@@ -93,34 +112,6 @@ class ExportController extends Controller
     return $q;
 }
 
-    private function issueReturnsQuery(Request $request)
-    {
-        $q = \App\Models\IssueReturnLine::query()
-            ->select([
-                'issue_return_lines.*',
-                'issue_returns.return_date',
-                'issue_returns.issue_id',
-                'issue_returns.received_from',
-                'issue_returns.reference_no',
-                'groups.group_code',
-                'groups.group_name',
-                'items.item_code',
-                'items.name as item_name',
-            ])
-            ->join('issue_returns','issue_returns.id','=','issue_return_lines.issue_return_id')
-            ->join('items','items.id','=','issue_return_lines.item_id')
-            ->join('groups','groups.id','=','items.group_id')
-            ->orderByDesc('issue_returns.return_date')
-            ->orderByDesc('issue_return_lines.id');
-
-        if ($request->filled('group_id')) $q->where('groups.id', $request->group_id);
-        if ($request->filled('item_id')) $q->where('items.id', $request->item_id);
-        if ($request->filled('issue_id')) $q->where('issue_returns.issue_id', $request->issue_id);
-        if ($request->filled('from')) $q->whereDate('issue_returns.return_date', '>=', $request->from);
-        if ($request->filled('to')) $q->whereDate('issue_returns.return_date', '<=', $request->to);
-
-        return $q;
-    }
 
 
     // PRINT
@@ -148,12 +139,6 @@ class ExportController extends Controller
     $rows = $this->returnsQuery($request)->limit(5000)->get();
     return view('print.returns', compact('rows'));
 }
-
-    public function printIssueReturns(Request $request)
-    {
-        $rows = $this->issueReturnsQuery($request)->limit(5000)->get();
-        return view('print.issue-returns', compact('rows'));
-    }
 
     // CSV
 
@@ -317,44 +302,6 @@ class ExportController extends Controller
         return $pdf->download('purchases_' . now()->format('Ymd_His') . '.pdf');
     }
 
-    public function csvIssueReturns(Request $request)
-    {
-        $rows = $this->issueReturnsQuery($request)->limit(20000)->get();
-        $filename = 'issue_returns_' . now()->format('Ymd_His') . '.csv';
-
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ];
-
-        $callback = function () use ($rows) {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, [
-                'Return Date','Issue ID','Group Code','Item Code','Item Name','Spec','Price','Qty','Line Total','Received From','Reference'
-            ]);
-
-            foreach ($rows as $r) {
-                fputcsv($out, [
-                    $r->return_date,
-                    $r->issue_id,
-                    $r->group_code,
-                    $r->item_code,
-                    $r->item_name,
-                    $r->specification_snapshot,
-                    $r->unit_price,
-                    $r->quantity,
-                    $r->line_total,
-                    $r->received_from,
-                    $r->reference_no,
-                ]);
-            }
-            fclose($out);
-        };
-
-        return Response::stream($callback, 200, $headers);
-    }
-
-
     public function pdfIssues(Request $request)
     {
         $rows = $this->issuesQuery($request)->limit(5000)->get();
@@ -376,11 +323,196 @@ class ExportController extends Controller
     return $pdf->download('returns_' . now()->format('Ymd_His') . '.pdf');
 }
 
-    public function pdfIssueReturns(Request $request)
+    // ==========================
+    // Stable v2 (no manual returns)
+    // ==========================
+    public function csvIssueReturns(Request $request)
     {
-        $rows = $this->issueReturnsQuery($request)->limit(20000)->get();
-        $pdf = Pdf::loadView('pdf.issue-returns', compact('rows'))
-            ->setPaper('a4', 'landscape');
-        return $pdf->download('issue_returns_' . now()->format('Ymd_His') . '.pdf');
+        $q = IssueReturnLine::query()
+            ->select([
+                'issue_return_transactions.return_date',
+                'issue_return_transactions.reference_no',
+                'issue_return_transactions.notes',
+                'issue_return_transactions.created_by',
+                'issue_return_lines.quantity',
+                'issue_return_lines.unit_price',
+                'groups.group_code',
+                'items.item_code',
+                'items.name as item_name',
+            ])
+            ->join('issue_return_transactions','issue_return_transactions.id','=','issue_return_lines.issue_return_transaction_id')
+            ->join('issue_lines','issue_lines.id','=','issue_return_lines.issue_line_id')
+            ->join('items','items.id','=','issue_return_lines.item_id')
+            ->join('groups','groups.id','=','items.group_id')
+            ->orderByDesc('issue_return_transactions.return_date')
+            ->orderByDesc('issue_return_lines.id');
+
+        if ($request->filled('group_id')) $q->where('groups.id', $request->group_id);
+        if ($request->filled('item_id')) $q->where('items.id', $request->item_id);
+        if ($request->filled('from')) $q->whereDate('issue_return_transactions.return_date', '>=', $request->from);
+        if ($request->filled('to')) $q->whereDate('issue_return_transactions.return_date', '<=', $request->to);
+
+        return $this->streamCsv(
+            'issue_returns_' . now()->format('Ymd_His') . '.csv',
+            ['Date','Group Code','Item Code','Item','Qty','Unit Price','Total','Reference','Notes'],
+            function($out) use ($q) {
+                $q->chunk(1000, function($rows) use ($out) {
+                    foreach ($rows as $r) {
+                        fputcsv($out, [
+                            $r->return_date,
+                            $r->group_code,
+                            $r->item_code,
+                            $r->item_name,
+                            (string)$r->quantity,
+                            number_format((float)$r->unit_price,2,'.',''),
+                            number_format(((float)$r->unit_price*(float)$r->quantity),2,'.',''),
+                            $r->reference_no,
+                            $r->notes,
+                        ]);
+                    }
+                });
+            }
+        );
     }
+
+    public function csvPurchaseReturns(Request $request)
+    {
+        $q = PurchaseReturnLine::query()
+            ->select([
+                'purchase_return_transactions.return_date',
+                'purchase_return_transactions.reference_no',
+                'purchase_return_transactions.notes',
+                'purchase_return_transactions.created_by',
+                'purchase_return_lines.quantity',
+                'purchase_return_lines.unit_price',
+                'groups.group_code',
+                'items.item_code',
+                'items.name as item_name',
+            ])
+            ->join('purchase_return_transactions','purchase_return_transactions.id','=','purchase_return_lines.purchase_return_transaction_id')
+            ->join('purchase_lines','purchase_lines.id','=','purchase_return_lines.purchase_line_id')
+            ->join('items','items.id','=','purchase_return_lines.item_id')
+            ->join('groups','groups.id','=','items.group_id')
+            ->orderByDesc('purchase_return_transactions.return_date')
+            ->orderByDesc('purchase_return_lines.id');
+
+        if ($request->filled('group_id')) $q->where('groups.id', $request->group_id);
+        if ($request->filled('item_id')) $q->where('items.id', $request->item_id);
+        if ($request->filled('from')) $q->whereDate('purchase_return_transactions.return_date', '>=', $request->from);
+        if ($request->filled('to')) $q->whereDate('purchase_return_transactions.return_date', '<=', $request->to);
+
+        return $this->streamCsv(
+            'purchase_returns_' . now()->format('Ymd_His') . '.csv',
+            ['Date','Group Code','Item Code','Item','Qty','Unit Price','Total','Reference','Notes'],
+            function($out) use ($q) {
+                $q->chunk(1000, function($rows) use ($out) {
+                    foreach ($rows as $r) {
+                        fputcsv($out, [
+                            $r->return_date,
+                            $r->group_code,
+                            $r->item_code,
+                            $r->item_name,
+                            (string)$r->quantity,
+                            number_format((float)$r->unit_price,2,'.',''),
+                            number_format(((float)$r->unit_price*(float)$r->quantity),2,'.',''),
+                            $r->reference_no,
+                            $r->notes,
+                        ]);
+                    }
+                });
+            }
+        );
+    }
+
+public function csvFullHistory(Request $request)
+{
+    $query = StockLedger::query()
+        ->select([
+            'stock_ledger.txn_date',
+            'stock_ledger.txn_type',
+            'stock_ledger.qty_in',
+            'stock_ledger.qty_out',
+            'stock_ledger.unit_price',
+            'stock_ledger.ref_table',
+            'stock_ledger.ref_id',
+            'stock_ledger.notes',
+            'groups.group_code',
+            'items.item_code',
+            'items.name as item_name',
+        ])
+        ->join('items', 'items.id', '=', 'stock_ledger.item_id')
+        ->join('groups', 'groups.id', '=', 'items.group_id')
+        ->orderBy('stock_ledger.txn_date')
+        ->orderBy('stock_ledger.id');
+
+    if ($request->filled('group_id')) {
+        $query->where('groups.id', $request->group_id);
+    }
+
+    if ($request->filled('item_id')) {
+        $query->where('items.id', $request->item_id);
+    }
+
+    if ($request->filled('from')) {
+        $query->whereDate('stock_ledger.txn_date', '>=', $request->from);
+    }
+
+    if ($request->filled('to')) {
+        $query->whereDate('stock_ledger.txn_date', '<=', $request->to);
+    }
+
+    $filename = 'full_history_' . now()->format('Ymd_His') . '.csv';
+
+    return response()->streamDownload(function () use ($query) {
+
+        $out = fopen('php://output', 'w');
+
+        // Header row
+        fputcsv($out, [
+            'Date',
+            'Type',
+            'Group Code',
+            'Item Code',
+            'Item Name',
+            'Qty In',
+            'Qty Out',
+            'Unit Price',
+            'Line Total',
+            'Ref Table',
+            'Ref ID',
+            'Notes',
+        ]);
+
+        $query->chunk(2000, function ($rows) use ($out) {
+            foreach ($rows as $r) {
+                $qtyIn  = (float) ($r->qty_in ?? 0);
+                $qtyOut = (float) ($r->qty_out ?? 0);
+                $price  = (float) ($r->unit_price ?? 0);
+
+                $lineTotal = ($qtyIn > 0 ? $qtyIn : $qtyOut) * $price;
+
+                fputcsv($out, [
+                    $r->txn_date,
+                    $r->txn_type,
+                    $r->group_code,
+                    $r->item_code,
+                    $r->item_name,
+                    $qtyIn ?: '',
+                    $qtyOut ?: '',
+                    number_format($price, 2, '.', ''),
+                    number_format($lineTotal, 2, '.', ''),
+                    $r->ref_table,
+                    $r->ref_id,
+                    $r->notes,
+                ]);
+            }
+        });
+
+        fclose($out);
+
+    }, $filename, [
+        'Content-Type' => 'text/csv; charset=UTF-8',
+    ]);
+}
+
 }

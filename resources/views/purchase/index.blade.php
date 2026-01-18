@@ -8,21 +8,10 @@
             <p class="mt-1 text-sm text-gray-600">Add and review inward entries.</p>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
-            @if(auth()->user()?->role === 'admin')
-                <a href="{{ route('print.purchases') }}" target="_blank"
-                   class="inline-flex items-center justify-center rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium hover:bg-gray-50">Print</a>
-                <a href="{{ route('export.purchases.csv') }}"
-                   class="inline-flex items-center justify-center rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium hover:bg-gray-50">CSV</a>
-                <a href="{{ route('export.purchases.pdf') }}"
-                   class="inline-flex items-center justify-center rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium hover:bg-gray-50">PDF</a>
-            @endif
-
-            <a href="{{ route('purchases.create') }}"
-               class="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">
-                New Purchase
-            </a>
-        </div>
+        <a href="{{ route('purchases.create') }}"
+           class="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">
+            New Purchase
+        </a>
     </div>
 
     <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">

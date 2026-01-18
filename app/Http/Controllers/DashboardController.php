@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Item;
 use App\Models\PurchaseLine;
 use App\Models\IssueLine;
-use App\Models\ReturnLine;
+use App\Models\IssueReturnLine;
+use App\Models\PurchaseReturnLine;
+use App\Models\StockLedger;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -26,23 +28,27 @@ class DashboardController extends Controller
             ->selectRaw('COALESCE(SUM(issue_lines.quantity),0) as qty, COALESCE(SUM(issue_lines.line_total),0) as total')
             ->first();
 
-        $returnIn = ReturnLine::query()
-            ->join('return_transactions','return_transactions.id','=','return_lines.return_transaction_id')
-            ->whereDate('return_transactions.return_date', $today)
-            ->where('return_transactions.type','IN')
-            ->selectRaw('COALESCE(SUM(return_lines.quantity),0) as qty, COALESCE(SUM(return_lines.line_total),0) as total')
+        $returnIn = IssueReturnLine::query()
+            ->join('issue_return_transactions','issue_return_transactions.id','=','issue_return_lines.issue_return_transaction_id')
+            ->whereDate('issue_return_transactions.return_date', $today)
+            ->selectRaw('COALESCE(SUM(issue_return_lines.quantity),0) as qty, COALESCE(SUM(issue_return_lines.line_total),0) as total')
             ->first();
 
-        $returnOut = ReturnLine::query()
-            ->join('return_transactions','return_transactions.id','=','return_lines.return_transaction_id')
-            ->whereDate('return_transactions.return_date', $today)
-            ->where('return_transactions.type','OUT')
-            ->selectRaw('COALESCE(SUM(return_lines.quantity),0) as qty, COALESCE(SUM(return_lines.line_total),0) as total')
+        $returnOut = PurchaseReturnLine::query()
+            ->join('purchase_return_transactions','purchase_return_transactions.id','=','purchase_return_lines.purchase_return_transaction_id')
+            ->whereDate('purchase_return_transactions.return_date', $today)
+            ->selectRaw('COALESCE(SUM(purchase_return_lines.quantity),0) as qty, COALESCE(SUM(purchase_return_lines.line_total),0) as total')
             ->first();
+
+        // Payment/value summary (simple, audit-safe):
+        // In value = sum(qty_in * unit_price), Out value = sum(qty_out * unit_price)
+        $inValue = (float) StockLedger::query()->selectRaw('COALESCE(SUM(qty_in * unit_price),0) as v')->value('v');
+        $outValue = (float) StockLedger::query()->selectRaw('COALESCE(SUM(qty_out * unit_price),0) as v')->value('v');
+        $balanceValue = round($inValue - $outValue, 2);
 
         $itemsCount = Item::count();
 
-        return view('dashboard.index', compact('purchase','issue','returnIn','returnOut','itemsCount'));
+        return view('dashboard.index', compact('purchase','issue','returnIn','returnOut','itemsCount','inValue','outValue','balanceValue'));
     }
 
     

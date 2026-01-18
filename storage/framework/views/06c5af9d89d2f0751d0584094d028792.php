@@ -1,0 +1,3 @@
+<?php echo e($slot); ?>: <?php echo e($url); ?>
+
+<?php /**PATH /Users/farhanellahi/Development/web/laravel/wms/vendor/laravel/framework/src/Illuminate/Mail/resources/views/text/button.blade.php ENDPATH**/ ?>

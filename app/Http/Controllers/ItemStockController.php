@@ -12,37 +12,16 @@ class ItemStockController extends Controller
     {
         $summary = $stock->getAvailableStockDetailed($item->id);
 
-        $from = request('from');
-        $to = request('to');
-
-        $base = StockLedger::query()
-            ->with('creator')
+        $history = StockLedger::query()
             ->where('item_id', $item->id)
-            ->when($from, fn($q) => $q->whereDate('txn_date', '>=', $from))
-            ->when($to, fn($q) => $q->whereDate('txn_date', '<=', $to))
             ->orderByDesc('txn_date')
-            ->orderByDesc('id');
-
-        $purchaseHistory = (clone $base)
-            ->where('txn_type', 'PURCHASE')
-            ->paginate(30, ['*'], 'p');
-
-        $issueHistory = (clone $base)
-            ->where('txn_type', 'ISSUE')
-            ->paginate(30, ['*'], 'i');
-
-        $issueReturnHistory = (clone $base)
-            ->where('txn_type', 'ISSUE_RETURN_IN')
-            ->paginate(30, ['*'], 'r');
+            ->orderByDesc('id')
+            ->paginate(50);
 
         return view('items.stock-show', [
             'item' => $item->load('group'),
             'summary' => $summary,
-            'purchaseHistory' => $purchaseHistory,
-            'issueHistory' => $issueHistory,
-            'issueReturnHistory' => $issueReturnHistory,
-            'from' => $from,
-            'to' => $to,
+            'history' => $history,
         ]);
     }
 }

@@ -15,7 +15,7 @@ class DefaultUsersSeeder extends Seeder
             ['username' => 'admin'],
             [
                 'name' => 'Main Desk Admin',
-                'email' => 'admin@local.test',
+                'email' => 'farhan987ellahi@gmail.com',
                 'password' => Hash::make('admin@123'),
                 'role' => 'admin',
                 'is_active' => true,

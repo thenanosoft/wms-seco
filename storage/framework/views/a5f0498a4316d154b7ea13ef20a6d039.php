@@ -51,17 +51,6 @@
                     Issue (Outward)
                 </a>
 
-                <a href="<?php echo e(route('issue-returns.index')); ?>"
-                   class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium
-                   <?php echo e(request()->routeIs('issue-returns.*') ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'); ?>">
-                    <svg class="h-5 w-5 flex-none opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                        <path d="M7 7h10v10H7z" />
-                        <path d="M12 3v4" />
-                        <path d="M8 5h8" />
-                    </svg>
-                    Issue Return (Inward)
-                </a>
-
                 <a href="<?php echo e(route('returns.index')); ?>"
                    class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium
                    <?php echo e(request()->routeIs('returns.*') ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'); ?>">

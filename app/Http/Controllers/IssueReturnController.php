@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreIssueReturnRequest;
 use App\Models\Issue;
 use App\Models\IssueLine;
-use App\Models\IssueReturn;
 use App\Models\IssueReturnLine;
+use App\Models\IssueReturnTransaction;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,132 +14,136 @@ class IssueReturnController extends Controller
 {
     public function index(Request $request)
     {
-        $q = IssueReturn::query()
-            ->with(['issue','creator'])
-            ->orderByDesc('return_date')
-            ->orderByDesc('id');
+        $q = IssueReturnLine::query()
+            ->select([
+                'issue_return_lines.*',
+                'issue_return_transactions.return_date',
+                'issues.issue_date',
+                'issues.reference_no',
+                'issues.issued_to',
+                'items.item_code',
+                'items.name as item_name',
+                'groups.group_code',
+                'users.name as created_by_name',
+            ])
+            ->join('issue_return_transactions', 'issue_return_transactions.id', '=', 'issue_return_lines.issue_return_transaction_id')
+            ->join('issues', 'issues.id', '=', 'issue_return_transactions.issue_id')
+            ->join('items', 'items.id', '=', 'issue_return_lines.item_id')
+            ->join('groups', 'groups.id', '=', 'items.group_id')
+            ->leftJoin('users', 'users.id', '=', 'issue_return_transactions.created_by')
+            ->orderByDesc('issue_return_transactions.return_date')
+            ->orderByDesc('issue_return_lines.id');
 
-        if ($request->filled('from')) $q->whereDate('return_date','>=',$request->from);
-        if ($request->filled('to')) $q->whereDate('return_date','<=',$request->to);
-        if ($request->filled('issue_id')) $q->where('issue_id', $request->issue_id);
+        if ($request->filled('issue_id')) $q->where('issues.id', $request->issue_id);
+        if ($request->filled('group_id')) $q->where('groups.id', $request->group_id);
+        if ($request->filled('item_id')) $q->where('items.id', $request->item_id);
+        if ($request->filled('from')) $q->whereDate('issue_return_transactions.return_date', '>=', $request->from);
+        if ($request->filled('to')) $q->whereDate('issue_return_transactions.return_date', '<=', $request->to);
 
-        $rows = $q->paginate(25)->withQueryString();
+        $rows = $q->paginate(50)->withQueryString();
 
-        $issues = Issue::query()->orderByDesc('issue_date')->limit(200)->get(['id','issue_date','reference_no','issued_to']);
+        $issues = Issue::query()->orderByDesc('issue_date')->limit(200)->get();
+        $groups = \App\Models\Group::query()->orderBy('group_code')->get();
+        $items = \App\Models\Item::query()->orderBy('item_code')->get();
 
-        return view('issue-returns.index', compact('rows','issues'));
+        return view('returns.issue.index', compact('rows','issues','groups','items'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        $issues = Issue::query()->orderByDesc('issue_date')->limit(200)->get(['id','issue_date','reference_no','issued_to']);
-        return view('issue-returns.create', compact('issues'));
+        $issues = Issue::query()->orderByDesc('issue_date')->limit(500)->get();
+
+        $selectedIssue = null;
+        $lines = [];
+
+        if ($request->filled('issue_id')) {
+            $selectedIssue = Issue::query()->with(['lines.item.group'])->find($request->issue_id);
+            if ($selectedIssue) {
+                $lines = $selectedIssue->lines->map(function (IssueLine $line) {
+                    $returned = (float) IssueReturnLine::query()->where('issue_line_id', $line->id)->sum('quantity');
+                    $remaining = max(0, (float)$line->quantity - $returned);
+                    return [
+                        'line_id' => $line->id,
+                        'group_code' => $line->item->group->group_code,
+                        'item_code' => $line->item->item_code,
+                        'item_name' => $line->item->name,
+                        'specification' => $line->specification,
+                        'issue_price' => (float)$line->issue_price,
+                        'issued_qty' => (float)$line->quantity,
+                        'returned_qty' => $returned,
+                        'remaining_qty' => $remaining,
+                    ];
+                })->values()->all();
+            }
+        }
+
+        return view('returns.issue.create', compact('issues','selectedIssue','lines'));
     }
 
-    public function issueLines(Issue $issue)
+    public function store(Request $request, StockService $stock)
     {
-        // Remaining qty per issue line = issued - sum(returned)
-        $lines = IssueLine::query()
-            ->where('issue_id', $issue->id)
-            ->with(['item.group'])
-            ->get()
-            ->map(function ($l) {
-                $returned = (float) IssueReturnLine::query()
-                    ->where('issue_line_id', $l->id)
-                    ->sum('quantity');
+        $data = $request->validate([
+            'return_date' => ['required','date'],
+            'issue_id' => ['required','integer','exists:issues,id'],
+            'notes' => ['nullable','string','max:255'],
+            'lines' => ['required','array','min:1'],
+            'lines.*.issue_line_id' => ['required','integer','exists:issue_lines,id'],
+            'lines.*.quantity' => ['required','numeric','min:0.001'],
+        ]);
 
-                $issued = (float)$l->quantity;
-                $remaining = max(0, $issued - $returned);
+        $issue = Issue::query()->with(['lines.item'])->findOrFail($data['issue_id']);
+        $issueLinesById = $issue->lines->keyBy('id');
 
-                return [
-                    'id' => $l->id,
-                    'item_id' => $l->item_id,
-                    'group_code' => $l->item->group->group_code,
-                    'item_code' => $l->item->item_code,
-                    'item_name' => $l->item->name,
-                    'specification' => $l->specification,
-                    'issue_price' => (float)$l->issue_price,
-                    'issued_qty' => $issued,
-                    'returned_qty' => $returned,
-                    'remaining_qty' => $remaining,
-                ];
-            })
-            ->values();
-
-        return response()->json(['lines' => $lines]);
-    }
-
-    public function store(StoreIssueReturnRequest $request, StockService $stock)
-    {
-        $userId = $request->user()->id;
-
-        // Strict validation: every line must belong to the chosen issue, and qty must be <= remaining.
-        $issue = Issue::query()->findOrFail($request->issue_id);
-
-        return DB::transaction(function () use ($request, $issue, $userId, $stock) {
-            $header = IssueReturn::create([
-                'return_date' => $request->return_date,
+        return DB::transaction(function () use ($data, $issue, $issueLinesById, $stock) {
+            $tx = IssueReturnTransaction::create([
+                'return_date' => $data['return_date'],
                 'issue_id' => $issue->id,
-                'received_from' => $request->received_from,
-                'reference_no' => $request->reference_no,
-                'notes' => $request->notes,
-                'created_by' => $userId,
+                'notes' => $data['notes'] ?? null,
+                'created_by' => auth()->id(),
             ]);
 
-            $seen = [];
+            foreach ($data['lines'] as $row) {
+                $lineId = (int)$row['issue_line_id'];
+                $qty = (float)$row['quantity'];
+                if ($qty <= 0) continue;
 
-            foreach ($request->input('lines', []) as $line) {
-                $issueLineId = (int)$line['issue_line_id'];
-                $qty = (float)$line['quantity'];
-
-                if ($qty <= 0) {
-                    abort(422, 'Quantity must be greater than zero.');
+                /** @var IssueLine|null $issueLine */
+                $issueLine = $issueLinesById->get($lineId);
+                if (!$issueLine) {
+                    abort(422, 'Invalid issue line selected.');
                 }
 
-                if (in_array($issueLineId, $seen, true)) {
-                    abort(422, 'Duplicate issue line selected.');
-                }
-                $seen[] = $issueLineId;
-
-                $issueLine = IssueLine::query()->where('issue_id', $issue->id)->findOrFail($issueLineId);
-
-                $alreadyReturned = (float) IssueReturnLine::query()
-                    ->where('issue_line_id', $issueLine->id)
-                    ->sum('quantity');
-
+                $alreadyReturned = (float) IssueReturnLine::query()->where('issue_line_id', $issueLine->id)->sum('quantity');
                 $remaining = max(0, (float)$issueLine->quantity - $alreadyReturned);
 
-                if ($qty > $remaining) {
-                    abort(422, "Only {$remaining} remaining for this issue line.");
+                if ($qty > $remaining + 0.00001) {
+                    abort(422, "Return qty cannot exceed remaining issued qty (Remaining: {$remaining}).");
                 }
 
-                $price = (float)$issueLine->issue_price;
-                $lineTotal = round($price * $qty, 2);
-
-                $savedLine = IssueReturnLine::create([
-                    'issue_return_id' => $header->id,
+                $lineTotal = round(((float)$issueLine->issue_price) * $qty, 2);
+                $rLine = IssueReturnLine::create([
+                    'issue_return_transaction_id' => $tx->id,
                     'issue_line_id' => $issueLine->id,
                     'item_id' => $issueLine->item_id,
-                    'specification_snapshot' => $issueLine->specification,
+                    'specification' => $issueLine->specification,
+                    'issue_price' => $issueLine->issue_price,
                     'quantity' => $qty,
-                    'unit_price' => $price,
                     'line_total' => $lineTotal,
                 ]);
 
-                // Ledger entry (adds stock back)
-                $stock->addIssueReturnInLedger([
-                    'txn_date' => $header->return_date,
-                    'ref_id' => $header->id,
-                    'ref_line_id' => $savedLine->id,
+                $stock->addIssueReturnInLedgerEntry([
+                    'txn_date' => $data['return_date'],
+                    'ref_id' => $tx->id,
+                    'ref_line_id' => $rLine->id,
                     'item_id' => $issueLine->item_id,
                     'qty_in' => $qty,
-                    'unit_price' => $price,
+                    'unit_price' => $issueLine->issue_price,
                     'specification_snapshot' => $issueLine->specification,
-                    'created_by' => $userId,
+                    'created_by' => auth()->id(),
                 ]);
             }
 
-            return redirect()->route('issue-returns.index')->with('status', 'Issue return saved successfully.');
+            return redirect()->route('returns.issue.index')->with('status', 'Issue return saved.');
         });
     }
 }

@@ -6,28 +6,28 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class IssueReturnLine extends Model
+class PurchaseReturnLine extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'issue_return_transaction_id',
-        'issue_line_id',
+        'purchase_return_transaction_id',
+        'purchase_line_id',
         'item_id',
         'specification',
-        'issue_price',
+        'purchase_price',
         'quantity',
         'line_total',
     ];
 
     public function transaction(): BelongsTo
     {
-        return $this->belongsTo(IssueReturnTransaction::class, 'issue_return_transaction_id');
+        return $this->belongsTo(PurchaseReturnTransaction::class, 'purchase_return_transaction_id');
     }
 
-    public function issueLine(): BelongsTo
+    public function purchaseLine(): BelongsTo
     {
-        return $this->belongsTo(IssueLine::class);
+        return $this->belongsTo(PurchaseLine::class);
     }
 
     public function item(): BelongsTo

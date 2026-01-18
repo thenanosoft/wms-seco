@@ -18,9 +18,9 @@
                 New Issue
             </a>
 
-            <a href="<?php echo e(route('returns.create')); ?>"
+            <a href="<?php echo e(route('returns.index')); ?>"
                class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium hover:bg-gray-50">
-                New Return
+                Returns
             </a>
 
             <?php if(auth()->user()?->role === 'admin'): ?>
@@ -62,9 +62,7 @@
             <div class="mt-2 text-2xl font-semibold"><?php echo e(number_format($returnIn->qty, 3)); ?></div>
             <div class="text-xs text-gray-600 mt-1">Value: <?php echo e(number_format($returnIn->total, 2)); ?></div>
             <div class="mt-3">
-                <a href="<?php echo e(route('returns.index')); ?>" class="text-sm font-medium text-gray-900 underline">
-                    View Returns
-                </a>
+                <a href="<?php echo e(route('returns.issue.index')); ?>" class="text-sm font-medium text-gray-900 underline">View Issue Returns</a>
             </div>
         </div>
 
@@ -73,9 +71,7 @@
             <div class="mt-2 text-2xl font-semibold"><?php echo e(number_format($returnOut->qty, 3)); ?></div>
             <div class="text-xs text-gray-600 mt-1">Value: <?php echo e(number_format($returnOut->total, 2)); ?></div>
             <div class="mt-3">
-                <a href="<?php echo e(route('returns.index')); ?>" class="text-sm font-medium text-gray-900 underline">
-                    View Returns
-                </a>
+                <a href="<?php echo e(route('returns.purchase.index')); ?>" class="text-sm font-medium text-gray-900 underline">View Purchase Returns</a>
             </div>
         </div>
 
@@ -105,8 +101,11 @@
                     <a href="<?php echo e(route('export.purchases.pdf')); ?>" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Purchases PDF</a>
                     <a href="<?php echo e(route('export.issues.csv')); ?>" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Issues CSV</a>
                     <a href="<?php echo e(route('export.issues.pdf')); ?>" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Issues PDF</a>
-                    <a href="<?php echo e(route('export.returns.csv')); ?>" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Returns CSV</a>
-                    <a href="<?php echo e(route('export.returns.pdf')); ?>" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Returns PDF</a>
+                    <a href="<?php echo e(route('export.issue_returns.csv')); ?>" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Issue Returns CSV</a>
+                    <a href="<?php echo e(route('export.issue_returns.pdf')); ?>" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Issue Returns PDF</a>
+                    <a href="<?php echo e(route('export.purchase_returns.csv')); ?>" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Purchase Returns CSV</a>
+                    <a href="<?php echo e(route('export.purchase_returns.pdf')); ?>" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Purchase Returns PDF</a>
+                    <a href="<?php echo e(route('export.ledger.csv')); ?>" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Full History CSV</a>
                 </div>
             </div>
 
@@ -115,6 +114,11 @@
                 <div class="mt-3">
                     <div class="text-sm text-gray-600">Total Items</div>
                     <div class="mt-1 text-2xl font-semibold"><?php echo e($itemsCount); ?></div>
+                    <div class="mt-4 grid grid-cols-1 gap-2 text-sm">
+                        <div class="flex items-center justify-between"><span class="text-gray-600">Total In Value</span><span class="font-semibold"><?php echo e(number_format($inValue, 2)); ?></span></div>
+                        <div class="flex items-center justify-between"><span class="text-gray-600">Total Out Value</span><span class="font-semibold"><?php echo e(number_format($outValue, 2)); ?></span></div>
+                        <div class="flex items-center justify-between"><span class="text-gray-600">Balance Value</span><span class="font-semibold"><?php echo e(number_format($balanceValue, 2)); ?></span></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -124,7 +128,7 @@
             <div class="mt-3 flex flex-wrap gap-2">
                 <a href="<?php echo e(route('purchases.create')); ?>" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">New Purchase</a>
                 <a href="<?php echo e(route('issues.create')); ?>" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">New Issue</a>
-                <a href="<?php echo e(route('returns.create')); ?>" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">New Return</a>
+                <a href="<?php echo e(route('returns.index')); ?>" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Returns</a>
             </div>
         </div>
     <?php endif; ?>
