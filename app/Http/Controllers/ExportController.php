@@ -93,6 +93,35 @@ class ExportController extends Controller
     return $q;
 }
 
+    private function issueReturnsQuery(Request $request)
+    {
+        $q = \App\Models\IssueReturnLine::query()
+            ->select([
+                'issue_return_lines.*',
+                'issue_returns.return_date',
+                'issue_returns.issue_id',
+                'issue_returns.received_from',
+                'issue_returns.reference_no',
+                'groups.group_code',
+                'groups.group_name',
+                'items.item_code',
+                'items.name as item_name',
+            ])
+            ->join('issue_returns','issue_returns.id','=','issue_return_lines.issue_return_id')
+            ->join('items','items.id','=','issue_return_lines.item_id')
+            ->join('groups','groups.id','=','items.group_id')
+            ->orderByDesc('issue_returns.return_date')
+            ->orderByDesc('issue_return_lines.id');
+
+        if ($request->filled('group_id')) $q->where('groups.id', $request->group_id);
+        if ($request->filled('item_id')) $q->where('items.id', $request->item_id);
+        if ($request->filled('issue_id')) $q->where('issue_returns.issue_id', $request->issue_id);
+        if ($request->filled('from')) $q->whereDate('issue_returns.return_date', '>=', $request->from);
+        if ($request->filled('to')) $q->whereDate('issue_returns.return_date', '<=', $request->to);
+
+        return $q;
+    }
+
 
     // PRINT
 
@@ -119,6 +148,12 @@ class ExportController extends Controller
     $rows = $this->returnsQuery($request)->limit(5000)->get();
     return view('print.returns', compact('rows'));
 }
+
+    public function printIssueReturns(Request $request)
+    {
+        $rows = $this->issueReturnsQuery($request)->limit(5000)->get();
+        return view('print.issue-returns', compact('rows'));
+    }
 
     // CSV
 
@@ -282,6 +317,44 @@ class ExportController extends Controller
         return $pdf->download('purchases_' . now()->format('Ymd_His') . '.pdf');
     }
 
+    public function csvIssueReturns(Request $request)
+    {
+        $rows = $this->issueReturnsQuery($request)->limit(20000)->get();
+        $filename = 'issue_returns_' . now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () use ($rows) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, [
+                'Return Date','Issue ID','Group Code','Item Code','Item Name','Spec','Price','Qty','Line Total','Received From','Reference'
+            ]);
+
+            foreach ($rows as $r) {
+                fputcsv($out, [
+                    $r->return_date,
+                    $r->issue_id,
+                    $r->group_code,
+                    $r->item_code,
+                    $r->item_name,
+                    $r->specification_snapshot,
+                    $r->unit_price,
+                    $r->quantity,
+                    $r->line_total,
+                    $r->received_from,
+                    $r->reference_no,
+                ]);
+            }
+            fclose($out);
+        };
+
+        return Response::stream($callback, 200, $headers);
+    }
+
+
     public function pdfIssues(Request $request)
     {
         $rows = $this->issuesQuery($request)->limit(5000)->get();
@@ -302,4 +375,12 @@ class ExportController extends Controller
     $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.returns', compact('rows'))->setPaper('a4', 'landscape');
     return $pdf->download('returns_' . now()->format('Ymd_His') . '.pdf');
 }
+
+    public function pdfIssueReturns(Request $request)
+    {
+        $rows = $this->issueReturnsQuery($request)->limit(20000)->get();
+        $pdf = Pdf::loadView('pdf.issue-returns', compact('rows'))
+            ->setPaper('a4', 'landscape');
+        return $pdf->download('issue_returns_' . now()->format('Ymd_His') . '.pdf');
+    }
 }

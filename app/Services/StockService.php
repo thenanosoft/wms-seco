@@ -99,8 +99,7 @@ public function getAvailableStockDetailed(int $itemId): array
 {
     $defaultThreshold = (float) \App\Models\AppSetting::get('default_low_stock_threshold', 0);
 
-    // Totals
-    $totals = \App\Models\StockLedger::query()
+    $totals = StockLedger::query()
         ->where('item_id', $itemId)
         ->selectRaw('
             COALESCE(SUM(qty_in),0) as total_in,
@@ -113,8 +112,8 @@ public function getAvailableStockDetailed(int $itemId): array
     $totalOut = (float)($totals->total_out ?? 0);
     $balance = (float)($totals->balance ?? 0);
 
-    // Weighted average purchase price (PURCHASE only)
-    $avgRow = \App\Models\StockLedger::query()
+    // Weighted average purchase price
+    $avgRow = StockLedger::query()
         ->where('item_id', $itemId)
         ->where('txn_type', 'PURCHASE')
         ->selectRaw('
@@ -128,25 +127,25 @@ public function getAvailableStockDetailed(int $itemId): array
     $avgPurchase = (float)($avgRow->avg_purchase_price ?? 0);
 
     // Last purchase price
-    $lastPurchase = (float) \App\Models\StockLedger::query()
+    $lastPurchase = (float) StockLedger::query()
         ->where('item_id', $itemId)
         ->where('txn_type', 'PURCHASE')
         ->orderByDesc('txn_date')
         ->orderByDesc('id')
         ->value('unit_price') ?? 0;
 
-    // Threshold and low flag
-    $item = \App\Models\Item::query()->select(['id','low_stock_threshold'])->find($itemId);
+    // Low stock calculation (same logic as summary)
+    $item = \App\Models\Item::query()->select(['id', 'low_stock_threshold'])->find($itemId);
     $thresholdUsed = $item && $item->low_stock_threshold !== null
         ? (float)$item->low_stock_threshold
         : $defaultThreshold;
-
     $isLow = $thresholdUsed > 0 ? ($balance <= $thresholdUsed) : false;
 
     return [
         'total_in' => $totalIn,
         'total_out' => $totalOut,
         'balance' => $balance,
+        'available' => $balance,
 
         'avg_purchase_price' => round($avgPurchase, 4),
         'last_purchase_price' => round($lastPurchase, 4),
@@ -156,6 +155,22 @@ public function getAvailableStockDetailed(int $itemId): array
     ];
 }
 
+    public function addIssueReturnInLedger(array $data): StockLedger
+    {
+        return StockLedger::create([
+            'txn_date' => $data['txn_date'],
+            'txn_type' => 'ISSUE_RETURN_IN',
+            'ref_table' => 'issue_returns',
+            'ref_id' => $data['ref_id'],
+            'ref_line_id' => $data['ref_line_id'],
+            'item_id' => $data['item_id'],
+            'qty_in' => $data['qty_in'],
+            'qty_out' => 0,
+            'unit_price' => $data['unit_price'],
+            'specification_snapshot' => $data['specification_snapshot'] ?? null,
+            'created_by' => $data['created_by'],
+        ]);
+    }
 public function addReturnInLedger(array $data)
 {
     return \App\Models\StockLedger::create([
@@ -190,24 +205,6 @@ public function addReturnOutLedger(array $data)
     ]);
 }
 
-public function addIssueReturnInLedger(array $data)
-{
-    return \App\Models\StockLedger::create([
-        'txn_date' => $data['txn_date'],
-        'txn_type' => 'ISSUE_RETURN_IN',
-        'ref_table' => 'issue_returns',
-        'ref_id' => $data['ref_id'],
-        'ref_line_id' => $data['ref_line_id'],
-        'item_id' => $data['item_id'],
-        'qty_in' => $data['quantity'],
-        'qty_out' => 0,
-        'unit_price' => $data['unit_price'],
-        'specification_snapshot' => $data['specification'] ?? null,
-        'created_by' => $data['created_by'],
-    ]);
-}
-
-
 
 
 public function stockSummaryWithLowFlag(): array
@@ -216,65 +213,51 @@ public function stockSummaryWithLowFlag(): array
 
     $rows = \App\Models\StockLedger::query()
         ->from('stock_ledger')
-        ->selectRaw('
+        ->selectRaw(' 
             items.id as item_id,
             items.item_code,
             items.name as item_name,
             items.low_stock_threshold,
             groups.group_code,
-
+            groups.group_name,
             COALESCE(SUM(stock_ledger.qty_in),0) as total_in,
             COALESCE(SUM(stock_ledger.qty_out),0) as total_out,
             (COALESCE(SUM(stock_ledger.qty_in),0) - COALESCE(SUM(stock_ledger.qty_out),0)) as balance,
 
-            -- Weighted avg purchase price (PURCHASE only)
-            (
-              CASE
-                WHEN COALESCE(SUM(CASE WHEN stock_ledger.txn_type = "PURCHASE" THEN stock_ledger.qty_in ELSE 0 END),0) = 0
-                THEN 0
-                ELSE
-                  COALESCE(SUM(CASE WHEN stock_ledger.txn_type = "PURCHASE" THEN stock_ledger.qty_in * stock_ledger.unit_price ELSE 0 END),0)
-                  /
-                  COALESCE(SUM(CASE WHEN stock_ledger.txn_type = "PURCHASE" THEN stock_ledger.qty_in ELSE 0 END),0)
-              END
-            ) as avg_purchase_price,
+            (SELECT COALESCE(sl2.unit_price,0)
+                FROM stock_ledger sl2
+                WHERE sl2.item_id = items.id AND sl2.txn_type = "PURCHASE"
+                ORDER BY sl2.txn_date DESC, sl2.id DESC
+                LIMIT 1
+            ) as last_purchase_price,
 
-            -- Last purchase price
-            (
-              SELECT sl2.unit_price
-              FROM stock_ledger sl2
-              WHERE sl2.item_id = items.id AND sl2.txn_type = "PURCHASE"
-              ORDER BY sl2.txn_date DESC, sl2.id DESC
-              LIMIT 1
-            ) as last_purchase_price
+            (SELECT
+                CASE WHEN COALESCE(SUM(sl3.qty_in),0) = 0 THEN 0
+                     ELSE COALESCE(SUM(sl3.qty_in * sl3.unit_price),0) / COALESCE(SUM(sl3.qty_in),0)
+                END
+                FROM stock_ledger sl3
+                WHERE sl3.item_id = items.id AND sl3.txn_type = "PURCHASE"
+            ) as avg_purchase_price
         ')
         ->join('items', 'items.id', '=', 'stock_ledger.item_id')
         ->join('groups', 'groups.id', '=', 'items.group_id')
-        ->groupBy('items.id','items.item_code','items.name','items.low_stock_threshold','groups.group_code')
+        ->groupBy('items.id','items.item_code','items.name','items.low_stock_threshold','groups.group_code','groups.group_name')
         ->orderBy('groups.group_code')
         ->orderBy('items.item_code')
         ->get();
 
     return $rows->map(function ($r) use ($defaultThreshold) {
         $threshold = $r->low_stock_threshold !== null ? (float)$r->low_stock_threshold : $defaultThreshold;
-        $balance = (float)$r->balance;
-
         $r->threshold_used = $threshold;
-        $r->is_low = $threshold > 0 ? ($balance <= $threshold) : false;
+        $r->is_low = $threshold > 0 ? ((float)$r->balance <= $threshold) : false;
 
-        $last = (float)($r->last_purchase_price ?? 0);
-        $avg  = (float)($r->avg_purchase_price ?? 0);
-
-        // Value based on LAST purchase price (simple and stable)
-        $r->stock_value_last = round($balance * $last, 2);
-
-        // Value based on AVG purchase price (useful for costing)
-        $r->stock_value_avg = round($balance * $avg, 2);
-
+        $r->last_purchase_price = (float)($r->last_purchase_price ?? 0);
+        $r->avg_purchase_price = (float)($r->avg_purchase_price ?? 0);
+        $r->value_last = round(((float)$r->balance) * $r->last_purchase_price, 2);
+        $r->value_avg = round(((float)$r->balance) * $r->avg_purchase_price, 2);
         return $r;
     })->all();
 }
-
 
 
 

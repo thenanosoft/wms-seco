@@ -46,25 +46,6 @@
             <textarea name="default_spec" class="mt-1 w-full rounded-lg border-gray-200" rows="3" placeholder="Optional">{{ old('default_spec', $item->default_spec) }}</textarea>
         </div>
 
-        <div class="mt-4">
-    <label class="block text-sm font-medium text-gray-700">Low Stock Threshold</label>
-    <input
-        type="number"
-        step="0.001"
-        name="low_stock_threshold"
-        value="{{ old('low_stock_threshold', $item->low_stock_threshold ?? '') }}"
-        class="mt-1 block w-full border rounded p-2"
-        placeholder="Example: 5.000"
-    />
-    @error('low_stock_threshold')
-        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
-    @enderror
-    <p class="text-gray-500 text-xs mt-1">
-        Leave empty to use default threshold from settings.
-    </p>
-</div>
-
-
         <div class="flex items-center justify-end gap-3">
             <a href="{{ route('items.index') }}" class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium hover:bg-gray-50">Cancel</a>
             <button class="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800">Update</button>

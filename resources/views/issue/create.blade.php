@@ -18,7 +18,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('issue-returns.store') }}" class="space-y-4">
+    <form method="POST" action="{{ route('issues.store') }}" class="space-y-4">
         @csrf
 
         <div class="rounded-xl border border-gray-200 bg-white p-4 sm:p-6">

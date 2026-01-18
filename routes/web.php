@@ -39,13 +39,27 @@ Route::middleware(['auth'])->group(function() {
     ->name('issues.store')
     ->middleware(['role:admin,store_helper']);
 
+    // Issue Return (Helper can return only issued items)
+    Route::get('/issue-returns', [\App\Http\Controllers\IssueReturnController::class,'index'])
+        ->name('issue-returns.index')
+        ->middleware(['role:admin,store_helper']);
+    Route::get('/issue-returns/create', [\App\Http\Controllers\IssueReturnController::class,'create'])
+        ->name('issue-returns.create')
+        ->middleware(['role:admin,store_helper']);
+    Route::post('/issue-returns', [\App\Http\Controllers\IssueReturnController::class,'store'])
+        ->name('issue-returns.store')
+        ->middleware(['role:admin,store_helper']);
+    Route::get('/issue-returns/issue/{issue}/lines', [\App\Http\Controllers\IssueReturnController::class,'issueLines'])
+        ->name('issue-returns.issue-lines')
+        ->middleware(['role:admin,store_helper']);
+
     Route::get('/stock', [\App\Http\Controllers\StockController::class, 'index'])
     ->name('stock.index')
     ->middleware(['role:admin']);
 
-    // Route::get('/returns', [\App\Http\Controllers\ReturnController::class,'index'])->name('returns.index')->middleware(['role:admin,store_helper']);
-    // Route::get('/returns/create', [\App\Http\Controllers\ReturnController::class,'create'])->name('returns.create')->middleware(['role:admin,store_helper']);
-    // Route::post('/returns', [\App\Http\Controllers\ReturnController::class,'store'])->name('returns.store')->middleware(['role:admin,store_helper']);
+    Route::get('/returns', [\App\Http\Controllers\ReturnController::class,'index'])->name('returns.index')->middleware(['role:admin,store_helper']);
+    Route::get('/returns/create', [\App\Http\Controllers\ReturnController::class,'create'])->name('returns.create')->middleware(['role:admin,store_helper']);
+    Route::post('/returns', [\App\Http\Controllers\ReturnController::class,'store'])->name('returns.store')->middleware(['role:admin,store_helper']);
 
     Route::get('/settings', [\App\Http\Controllers\SettingsController::class, 'index'])
     ->name('settings.index')
@@ -66,23 +80,6 @@ Route::middleware(['auth'])->group(function() {
     Route::post('/backup/restore', [\App\Http\Controllers\BackupController::class,'restore'])
     ->name('backup.restore')
     ->middleware(['auth','role:admin']);
-
-    // Issue-based return (INWARD) - helper + admin
-Route::get('/issue-returns', [\App\Http\Controllers\IssueReturnController::class,'index'])
-    ->name('issue-returns.index')
-    ->middleware(['role:admin,store_helper']);
-
-Route::get('/issue-returns/create', [\App\Http\Controllers\IssueReturnController::class,'create'])
-    ->name('issue-returns.create')
-    ->middleware(['role:admin,store_helper']);
-
-Route::get('/issue-returns/issue/{issue}', [\App\Http\Controllers\IssueReturnController::class,'fetchIssueLines'])
-    ->name('issue-returns.issue.lines')
-    ->middleware(['role:admin,store_helper']);
-
-Route::post('/issue-returns', [\App\Http\Controllers\IssueReturnController::class,'store'])
-    ->name('issue-returns.store')
-    ->middleware(['role:admin,store_helper']);
 
 
 
@@ -109,28 +106,24 @@ Route::post('/issue-returns', [\App\Http\Controllers\IssueReturnController::clas
     Route::get('/print/issues', [\App\Http\Controllers\ExportController::class, 'printIssues'])->name('print.issues');
     Route::get('/print/stock', [\App\Http\Controllers\ExportController::class, 'printStock'])->name('print.stock');
     Route::get('/print/returns', [\App\Http\Controllers\ExportController::class, 'printReturns'])->name('print.returns');
+    Route::get('/print/issue-returns', [\App\Http\Controllers\ExportController::class, 'printIssueReturns'])->name('print.issue-returns');
 
     // CSV exports
     Route::get('/export/purchases.csv', [\App\Http\Controllers\ExportController::class, 'csvPurchases'])->name('export.purchases.csv');
     Route::get('/export/issues.csv', [\App\Http\Controllers\ExportController::class, 'csvIssues'])->name('export.issues.csv');
     Route::get('/export/stock.csv', [\App\Http\Controllers\ExportController::class, 'csvStock'])->name('export.stock.csv');
     Route::get('/export/returns.csv', [\App\Http\Controllers\ExportController::class, 'csvReturns'])->name('export.returns.csv');
+    Route::get('/export/issue-returns.csv', [\App\Http\Controllers\ExportController::class, 'csvIssueReturns'])->name('export.issue-returns.csv');
+    Route::get('/export/issue-returns.csv', [\App\Http\Controllers\ExportController::class, 'csvIssueReturns'])->name('export.issue-returns.csv');
 
     // PDF exports
     Route::get('/export/purchases.pdf', [\App\Http\Controllers\ExportController::class, 'pdfPurchases'])->name('export.purchases.pdf');
     Route::get('/export/issues.pdf', [\App\Http\Controllers\ExportController::class, 'pdfIssues'])->name('export.issues.pdf');
     Route::get('/export/stock.pdf', [\App\Http\Controllers\ExportController::class, 'pdfStock'])->name('export.stock.pdf');
     Route::get('/export/returns.pdf', [\App\Http\Controllers\ExportController::class, 'pdfReturns'])->name('export.returns.pdf');
-
-    Route::get('/returns', [\App\Http\Controllers\ReturnController::class,'index'])
-    ->name('returns.index');
-
-Route::get('/returns/create', [\App\Http\Controllers\ReturnController::class,'create'])
-    ->name('returns.create');
-
-Route::post('/returns', [\App\Http\Controllers\ReturnController::class,'store'])
-    ->name('returns.store');
-
+    Route::get('/export/issue-returns.pdf', [\App\Http\Controllers\ExportController::class, 'pdfIssueReturns'])->name('export.issue-returns.pdf');
+    Route::get('/export/issue-returns.pdf', [\App\Http\Controllers\ExportController::class, 'pdfIssueReturns'])->name('export.issue-returns.pdf');
+    Route::get('/export/issue-returns.pdf', [\App\Http\Controllers\ExportController::class, 'pdfIssueReturns'])->name('export.issue-returns.pdf');
 });
 
 

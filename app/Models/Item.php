@@ -16,11 +16,6 @@ class Item extends Model
         'item_code',
         'name',
         'default_spec',
-        'low_stock_threshold',
-    ];
-
-    protected $casts = [
-        'low_stock_threshold' => 'decimal:3',
     ];
 
     public function group(): BelongsTo
