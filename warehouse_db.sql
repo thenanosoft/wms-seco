@@ -21,7 +21,7 @@ SET @@SESSION.SQL_LOG_BIN= 0;
 -- GTID state at the beginning of the backup 
 --
 
-SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '06de8fd2-e81a-11f0-a46f-37570f452e15:1-1796';
+SET @@GLOBAL.GTID_PURGED=/*!80000 '+'*/ '06de8fd2-e81a-11f0-a46f-37570f452e15:1-2354';
 
 --
 -- Table structure for table `app_settings`
@@ -38,7 +38,7 @@ CREATE TABLE `app_settings` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `app_settings_key_unique` (`key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -47,6 +47,7 @@ CREATE TABLE `app_settings` (
 
 LOCK TABLES `app_settings` WRITE;
 /*!40000 ALTER TABLE `app_settings` DISABLE KEYS */;
+INSERT INTO `app_settings` VALUES (1,'default_low_stock_threshold','10','2026-01-13 22:53:27','2026-01-14 00:16:38');
 /*!40000 ALTER TABLE `app_settings` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -67,7 +68,7 @@ CREATE TABLE `backup_settings` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -76,6 +77,7 @@ CREATE TABLE `backup_settings` (
 
 LOCK TABLES `backup_settings` WRITE;
 /*!40000 ALTER TABLE `backup_settings` DISABLE KEYS */;
+INSERT INTO `backup_settings` VALUES (1,0,'daily',1,'02:00',NULL,'2026-01-13 22:53:27','2026-01-14 00:16:38');
 /*!40000 ALTER TABLE `backup_settings` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -238,7 +240,7 @@ CREATE TABLE `issue_lines` (
   KEY `issue_lines_issue_id_item_id_index` (`issue_id`,`item_id`),
   CONSTRAINT `issue_lines_issue_id_foreign` FOREIGN KEY (`issue_id`) REFERENCES `issues` (`id`) ON DELETE CASCADE,
   CONSTRAINT `issue_lines_item_id_foreign` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -247,7 +249,76 @@ CREATE TABLE `issue_lines` (
 
 LOCK TABLES `issue_lines` WRITE;
 /*!40000 ALTER TABLE `issue_lines` DISABLE KEYS */;
+INSERT INTO `issue_lines` VALUES (1,1,1,'22\"',1450.00,20.000,29000.00,'2026-01-13 20:08:14','2026-01-13 20:08:14'),(2,2,2,NULL,12.00,196.000,2352.00,'2026-01-13 21:24:39','2026-01-13 21:24:39'),(3,3,2,NULL,12.00,50.000,600.00,'2026-01-13 22:52:36','2026-01-13 22:52:36'),(4,4,2,NULL,12.00,4.000,48.00,'2026-01-13 22:58:56','2026-01-13 22:58:56'),(5,5,6,NULL,250.00,90.000,22500.00,'2026-01-13 23:12:42','2026-01-13 23:12:42'),(6,6,6,NULL,300.00,105.000,31500.00,'2026-01-13 23:46:26','2026-01-13 23:46:26');
 /*!40000 ALTER TABLE `issue_lines` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `issue_return_lines`
+--
+
+DROP TABLE IF EXISTS `issue_return_lines`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `issue_return_lines` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `issue_return_id` bigint unsigned NOT NULL,
+  `issue_line_id` bigint unsigned NOT NULL,
+  `item_id` bigint unsigned NOT NULL,
+  `quantity` decimal(12,3) NOT NULL,
+  `unit_price` decimal(12,2) NOT NULL,
+  `line_total` decimal(14,2) NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_issue_return_line_once` (`issue_return_id`,`issue_line_id`),
+  KEY `issue_return_lines_issue_line_id_foreign` (`issue_line_id`),
+  KEY `issue_return_lines_item_id_foreign` (`item_id`),
+  CONSTRAINT `issue_return_lines_issue_line_id_foreign` FOREIGN KEY (`issue_line_id`) REFERENCES `issue_lines` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `issue_return_lines_issue_return_id_foreign` FOREIGN KEY (`issue_return_id`) REFERENCES `issue_returns` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `issue_return_lines_item_id_foreign` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `issue_return_lines`
+--
+
+LOCK TABLES `issue_return_lines` WRITE;
+/*!40000 ALTER TABLE `issue_return_lines` DISABLE KEYS */;
+/*!40000 ALTER TABLE `issue_return_lines` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `issue_returns`
+--
+
+DROP TABLE IF EXISTS `issue_returns`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `issue_returns` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `return_date` date NOT NULL,
+  `issue_id` bigint unsigned NOT NULL,
+  `notes` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_by` bigint unsigned NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `issue_returns_issue_id_foreign` (`issue_id`),
+  KEY `issue_returns_created_by_foreign` (`created_by`),
+  CONSTRAINT `issue_returns_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `issue_returns_issue_id_foreign` FOREIGN KEY (`issue_id`) REFERENCES `issues` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `issue_returns`
+--
+
+LOCK TABLES `issue_returns` WRITE;
+/*!40000 ALTER TABLE `issue_returns` DISABLE KEYS */;
+/*!40000 ALTER TABLE `issue_returns` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -270,7 +341,7 @@ CREATE TABLE `issues` (
   KEY `issues_created_by_foreign` (`created_by`),
   KEY `issues_issue_date_index` (`issue_date`),
   CONSTRAINT `issues_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -279,6 +350,7 @@ CREATE TABLE `issues` (
 
 LOCK TABLES `issues` WRITE;
 /*!40000 ALTER TABLE `issues` DISABLE KEYS */;
+INSERT INTO `issues` VALUES (1,'2026-01-14','Nauman','011',1,'Farhan Brother','2026-01-13 20:08:14','2026-01-13 20:08:14'),(2,'2026-01-14','Hamza','012',1,'New Customer','2026-01-13 21:24:39','2026-01-13 21:24:39'),(3,'2026-01-14',NULL,NULL,1,NULL,'2026-01-13 22:52:36','2026-01-13 22:52:36'),(4,'2026-01-14',NULL,NULL,1,NULL,'2026-01-13 22:58:56','2026-01-13 22:58:56'),(5,'2026-01-14',NULL,NULL,1,NULL,'2026-01-13 23:12:42','2026-01-13 23:12:42'),(6,'2026-01-14',NULL,NULL,1,NULL,'2026-01-13 23:46:26','2026-01-13 23:46:26');
 /*!40000 ALTER TABLE `issues` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -311,7 +383,7 @@ CREATE TABLE `items` (
 
 LOCK TABLES `items` WRITE;
 /*!40000 ALTER TABLE `items` DISABLE KEYS */;
-INSERT INTO `items` VALUES (1,1,'ST-001','Steel Rod',NULL,NULL,'2026-01-13 19:41:25','2026-01-13 19:41:25'),(2,1,'ST-002','Steel Mug',NULL,NULL,'2026-01-13 19:41:25','2026-01-13 19:41:25'),(3,1,'ST-003','Steel Sheet',NULL,NULL,'2026-01-13 19:41:25','2026-01-13 19:41:25'),(4,2,'EL-001','Copper Wire',NULL,NULL,'2026-01-13 19:41:25','2026-01-13 19:41:25'),(5,2,'EL-002','Switch',NULL,NULL,'2026-01-13 19:41:25','2026-01-13 19:41:25'),(6,3,'HW-001','Nut Bolt Set',NULL,NULL,'2026-01-13 19:41:25','2026-01-13 19:41:25');
+INSERT INTO `items` VALUES (1,1,'ST-001','Steel Rod',NULL,10.000,'2026-01-13 19:41:25','2026-01-13 20:23:40'),(2,1,'ST-002','Steel Mug',NULL,NULL,'2026-01-13 19:41:25','2026-01-13 19:41:25'),(3,1,'ST-003','Steel Sheet',NULL,NULL,'2026-01-13 19:41:25','2026-01-13 19:41:25'),(4,2,'EL-001','Copper Wire',NULL,NULL,'2026-01-13 19:41:25','2026-01-13 19:41:25'),(5,2,'EL-002','Switch',NULL,NULL,'2026-01-13 19:41:25','2026-01-13 19:41:25'),(6,3,'HW-001','Nut Bolt Set',NULL,NULL,'2026-01-13 19:41:25','2026-01-13 19:41:25');
 /*!40000 ALTER TABLE `items` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -387,7 +459,7 @@ CREATE TABLE `migrations` (
   `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -396,7 +468,7 @@ CREATE TABLE `migrations` (
 
 LOCK TABLES `migrations` WRITE;
 /*!40000 ALTER TABLE `migrations` DISABLE KEYS */;
-INSERT INTO `migrations` VALUES (1,'0001_01_01_000000_create_users_table',1),(2,'0001_01_01_000001_create_cache_table',1),(3,'0001_01_01_000002_create_jobs_table',1),(4,'2026_01_02_211732_add_role_and_is_active_to_users_table',1),(5,'2026_01_02_211733_create_groups_table',1),(6,'2026_01_02_211733_create_items_table',1),(7,'2026_01_02_211733_create_purchases_table',1),(8,'2026_01_02_211734_create_issues_table',1),(9,'2026_01_02_211735_create_backups_table',1),(10,'2026_01_02_211735_create_issue_lines_table',1),(11,'2026_01_02_211735_create_system_logs_table',1),(12,'2026_01_02_211736_create_purchase_lines_table',1),(13,'2026_01_02_211737_create_stock_ledger_table',1),(14,'2026_01_05_101347_create_return_transactions_table',1),(15,'2026_01_05_101357_create_return_lines_table',1),(16,'2026_01_07_132612_create_backup_settings_table',1),(17,'2026_01_07_182241_add_stock_threshold_to_items_table',1),(18,'2026_01_07_183019_create_app_settings_table',1);
+INSERT INTO `migrations` VALUES (1,'0001_01_01_000000_create_users_table',1),(2,'0001_01_01_000001_create_cache_table',1),(3,'0001_01_01_000002_create_jobs_table',1),(4,'2026_01_02_211732_add_role_and_is_active_to_users_table',1),(5,'2026_01_02_211733_create_groups_table',1),(6,'2026_01_02_211733_create_items_table',1),(7,'2026_01_02_211733_create_purchases_table',1),(8,'2026_01_02_211734_create_issues_table',1),(9,'2026_01_02_211735_create_backups_table',1),(10,'2026_01_02_211735_create_issue_lines_table',1),(11,'2026_01_02_211735_create_system_logs_table',1),(12,'2026_01_02_211736_create_purchase_lines_table',1),(13,'2026_01_02_211737_create_stock_ledger_table',1),(14,'2026_01_05_101347_create_return_transactions_table',1),(15,'2026_01_05_101357_create_return_lines_table',1),(16,'2026_01_07_132612_create_backup_settings_table',1),(17,'2026_01_07_182241_add_stock_threshold_to_items_table',1),(18,'2026_01_07_183019_create_app_settings_table',1),(19,'2026_01_14_032125_add_unique_ref_to_stock_ledger_table',2),(20,'2026_01_14_042053_create_issue_returns_table',3),(21,'2026_01_14_042107_create_issue_return_lines_table',3);
 /*!40000 ALTER TABLE `migrations` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -446,7 +518,7 @@ CREATE TABLE `purchase_lines` (
   KEY `purchase_lines_purchase_id_item_id_index` (`purchase_id`,`item_id`),
   CONSTRAINT `purchase_lines_item_id_foreign` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`),
   CONSTRAINT `purchase_lines_purchase_id_foreign` FOREIGN KEY (`purchase_id`) REFERENCES `purchases` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -455,6 +527,7 @@ CREATE TABLE `purchase_lines` (
 
 LOCK TABLES `purchase_lines` WRITE;
 /*!40000 ALTER TABLE `purchase_lines` DISABLE KEYS */;
+INSERT INTO `purchase_lines` VALUES (1,1,1,'22\"',1450.00,100.000,145000.00,'2026-01-13 20:07:05','2026-01-13 20:07:05'),(2,2,2,'6\"',12.00,250.000,3000.00,'2026-01-13 21:20:59','2026-01-13 21:20:59'),(3,3,6,'1.5',250.00,100.000,25000.00,'2026-01-13 23:12:10','2026-01-13 23:12:10'),(4,4,6,'1.8',300.00,100.000,30000.00,'2026-01-13 23:14:01','2026-01-13 23:14:01');
 /*!40000 ALTER TABLE `purchase_lines` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -478,7 +551,7 @@ CREATE TABLE `purchases` (
   KEY `purchases_created_by_foreign` (`created_by`),
   KEY `purchases_purchase_date_index` (`purchase_date`),
   CONSTRAINT `purchases_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -487,6 +560,7 @@ CREATE TABLE `purchases` (
 
 LOCK TABLES `purchases` WRITE;
 /*!40000 ALTER TABLE `purchases` DISABLE KEYS */;
+INSERT INTO `purchases` VALUES (1,'2026-01-14','Farhan','110',1,'Mansha Group','2026-01-13 20:07:05','2026-01-13 20:07:05'),(2,'2026-01-14','Fasi','112',1,'New Supplier','2026-01-13 21:20:59','2026-01-13 21:20:59'),(3,'2026-01-14','New Supplier','113',1,'Nothing Special','2026-01-13 23:12:10','2026-01-13 23:12:10'),(4,'2026-01-14',NULL,NULL,1,'113','2026-01-13 23:14:01','2026-01-13 23:14:01');
 /*!40000 ALTER TABLE `purchases` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -512,7 +586,7 @@ CREATE TABLE `return_lines` (
   KEY `return_lines_item_id_foreign` (`item_id`),
   CONSTRAINT `return_lines_item_id_foreign` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`),
   CONSTRAINT `return_lines_return_transaction_id_foreign` FOREIGN KEY (`return_transaction_id`) REFERENCES `return_transactions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -521,6 +595,7 @@ CREATE TABLE `return_lines` (
 
 LOCK TABLES `return_lines` WRITE;
 /*!40000 ALTER TABLE `return_lines` DISABLE KEYS */;
+INSERT INTO `return_lines` VALUES (1,1,1,NULL,25.00,1450.000,36250.00,'2026-01-13 21:30:10','2026-01-13 21:30:10'),(2,2,1,NULL,1450.00,30.000,43500.00,'2026-01-13 21:31:04','2026-01-13 21:31:04'),(3,3,2,NULL,12.00,200.000,2400.00,'2026-01-13 22:59:45','2026-01-13 22:59:45');
 /*!40000 ALTER TABLE `return_lines` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -544,7 +619,7 @@ CREATE TABLE `return_transactions` (
   PRIMARY KEY (`id`),
   KEY `return_transactions_created_by_foreign` (`created_by`),
   CONSTRAINT `return_transactions_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -553,6 +628,7 @@ CREATE TABLE `return_transactions` (
 
 LOCK TABLES `return_transactions` WRITE;
 /*!40000 ALTER TABLE `return_transactions` DISABLE KEYS */;
+INSERT INTO `return_transactions` VALUES (1,'2026-01-14','IN','012','Nauman','Return not used',1,'2026-01-13 21:30:10','2026-01-13 21:30:10'),(2,'2026-01-14','IN',NULL,NULL,NULL,1,'2026-01-13 21:31:04','2026-01-13 21:31:04'),(3,'2026-01-14','IN',NULL,NULL,NULL,1,'2026-01-13 22:59:45','2026-01-13 22:59:45');
 /*!40000 ALTER TABLE `return_transactions` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -582,6 +658,7 @@ CREATE TABLE `sessions` (
 
 LOCK TABLES `sessions` WRITE;
 /*!40000 ALTER TABLE `sessions` DISABLE KEYS */;
+INSERT INTO `sessions` VALUES ('C8ftuZDIdP0qacAke7duSnJ3TcSWL6weJDOkxXIQ',1,'127.0.0.1','Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36','YTo1OntzOjY6Il90b2tlbiI7czo0MDoiUVNkcGtJQW8wSGN1dDEzSUJ1YmhCQmlmcXl3ckxXNnJrbTNPVlc4RCI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6Mzc6Imh0dHA6Ly93bXMudGVzdC9pc3N1ZS1yZXR1cm5zL2lzc3VlLzIiO3M6NToicm91dGUiO3M6MjU6Imlzc3VlLXJldHVybnMuaXNzdWUubGluZXMiO31zOjY6Il9mbGFzaCI7YToyOntzOjM6Im9sZCI7YTowOnt9czozOiJuZXciO2E6MDp7fX1zOjM6InVybCI7YTowOnt9czo1MDoibG9naW5fd2ViXzU5YmEzNmFkZGMyYjJmOTQwMTU4MGYwMTRjN2Y1OGVhNGUzMDk4OWQiO2k6MTt9',1768706953),('H4v84WI4FFH4Ib9WNzhRsKyrfEFV5NgW26VAL5iN',1,'127.0.0.1','Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36','YTo1OntzOjY6Il90b2tlbiI7czo0MDoiUXM4SjJGOERyNlY0NjE5aUpnc1VmakxoaEVKTHhSVldYRDBlZ2dyayI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6Mzc6Imh0dHA6Ly93bXMudGVzdC9pc3N1ZS1yZXR1cm5zL2lzc3VlLzIiO3M6NToicm91dGUiO3M6MjU6Imlzc3VlLXJldHVybnMuaXNzdWUubGluZXMiO31zOjM6InVybCI7YTowOnt9czo1MDoibG9naW5fd2ViXzU5YmEzNmFkZGMyYjJmOTQwMTU4MGYwMTRjN2Y1OGVhNGUzMDk4OWQiO2k6MTt9',1768532268),('olGaqDgkcYZALRaeaR0oQq5940KFlFOfo9MPxEWV',NULL,'127.0.0.1','Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.2 Safari/605.1.15','YTo0OntzOjY6Il90b2tlbiI7czo0MDoiUm1UZ2dNOGVNNEtic09nWnZlQzYxdHJQakhSN3huT2lBdGNwQmx2USI7czozOiJ1cmwiO2E6MTp7czo4OiJpbnRlbmRlZCI7czoyOToiaHR0cDovL3dtcy50ZXN0L2lzc3VlLXJldHVybnMiO31zOjk6Il9wcmV2aW91cyI7YToyOntzOjM6InVybCI7czoyMToiaHR0cDovL3dtcy50ZXN0L2xvZ2luIjtzOjU6InJvdXRlIjtzOjU6ImxvZ2luIjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==',1768413345),('Sh6RqlvA9sIGychr5e8MoGQ2Zul1a7Fy683v6XfA',1,'127.0.0.1','Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.2 Safari/605.1.15','YTo1OntzOjY6Il90b2tlbiI7czo0MDoiZnFZZDZYMWNTdDl0N0NVOGNSY2dDOTUxNDc2TGI4cGNVSnFzT2lldSI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6Mjk6Imh0dHA6Ly93bXMudGVzdC9pc3N1ZXMvY3JlYXRlIjtzOjU6InJvdXRlIjtzOjEzOiJpc3N1ZXMuY3JlYXRlIjt9czozOiJ1cmwiO2E6MDp7fXM6NTA6ImxvZ2luX3dlYl81OWJhMzZhZGRjMmIyZjk0MDE1ODBmMDE0YzdmNThlYTRlMzA5ODlkIjtpOjE7fQ==',1768368054);
 /*!40000 ALTER TABLE `sessions` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -608,6 +685,7 @@ CREATE TABLE `stock_ledger` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_stock_ledger_ref_line` (`txn_type`,`ref_table`,`ref_line_id`),
   KEY `stock_ledger_created_by_foreign` (`created_by`),
   KEY `stock_ledger_item_id_txn_date_index` (`item_id`,`txn_date`),
   KEY `stock_ledger_txn_type_txn_date_index` (`txn_type`,`txn_date`),
@@ -615,7 +693,7 @@ CREATE TABLE `stock_ledger` (
   KEY `stock_ledger_txn_date_index` (`txn_date`),
   CONSTRAINT `stock_ledger_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
   CONSTRAINT `stock_ledger_item_id_foreign` FOREIGN KEY (`item_id`) REFERENCES `items` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -624,6 +702,7 @@ CREATE TABLE `stock_ledger` (
 
 LOCK TABLES `stock_ledger` WRITE;
 /*!40000 ALTER TABLE `stock_ledger` DISABLE KEYS */;
+INSERT INTO `stock_ledger` VALUES (1,'2026-01-14','PURCHASE','purchases',1,1,1,100.000,0.000,1450.00,'22\"',1,'2026-01-13 20:07:05','2026-01-13 20:07:05'),(2,'2026-01-14','ISSUE','issues',1,1,1,0.000,20.000,1450.00,'22\"',1,'2026-01-13 20:08:14','2026-01-13 20:08:14'),(3,'2026-01-14','PURCHASE','purchases',2,2,2,250.000,0.000,12.00,'6\"',1,'2026-01-13 21:20:59','2026-01-13 21:20:59'),(4,'2026-01-14','ISSUE','issues',2,2,2,0.000,196.000,12.00,NULL,1,'2026-01-13 21:24:39','2026-01-13 21:24:39'),(5,'2026-01-14','RETURN_IN','return_transactions',1,1,1,1450.000,0.000,25.00,NULL,1,'2026-01-13 21:30:10','2026-01-13 21:30:10'),(6,'2026-01-14','RETURN_IN','return_transactions',2,2,1,30.000,0.000,1450.00,NULL,1,'2026-01-13 21:31:04','2026-01-13 21:31:04'),(7,'2026-01-14','ISSUE','issues',3,3,2,0.000,50.000,12.00,NULL,1,'2026-01-13 22:52:36','2026-01-13 22:52:36'),(8,'2026-01-14','ISSUE','issues',4,4,2,0.000,4.000,12.00,NULL,1,'2026-01-13 22:58:56','2026-01-13 22:58:56'),(9,'2026-01-14','RETURN_IN','return_transactions',3,3,2,200.000,0.000,12.00,NULL,1,'2026-01-13 22:59:45','2026-01-13 22:59:45'),(10,'2026-01-14','PURCHASE','purchases',3,3,6,100.000,0.000,250.00,'1.5',1,'2026-01-13 23:12:10','2026-01-13 23:12:10'),(11,'2026-01-14','ISSUE','issues',5,5,6,0.000,90.000,250.00,NULL,1,'2026-01-13 23:12:42','2026-01-13 23:12:42'),(12,'2026-01-14','PURCHASE','purchases',4,4,6,100.000,0.000,300.00,'1.8',1,'2026-01-13 23:14:01','2026-01-13 23:14:01'),(13,'2026-01-14','ISSUE','issues',6,6,6,0.000,105.000,300.00,NULL,1,'2026-01-13 23:46:26','2026-01-13 23:46:26');
 /*!40000 ALTER TABLE `stock_ledger` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -704,4 +783,4 @@ SET @@SESSION.SQL_LOG_BIN = @MYSQLDUMP_TEMP_LOG_BIN;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-01-14  5:43:06
+-- Dump completed on 2026-01-18  8:59:20

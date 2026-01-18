@@ -51,15 +51,10 @@
                     Issue (Outward)
                 </a>
 
-                <a href="{{ route('returns.index') }}"
-                   class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium
-                   {{ request()->routeIs('returns.*') ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100' }}">
-                    <svg class="h-5 w-5 flex-none opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                        <path d="M7 7h10v10H7z" />
-                        <path d="M7 12h10" />
-                        <path d="M12 7v10" />
-                    </svg>
-                    Returns
+                <a href="{{ route('issue-returns.index') }}"
+                    class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium
+                    {{ request()->routeIs('issue-returns.*') ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100' }}">
+                    Issue Returns (Inward)
                 </a>
             </div>
 
@@ -93,6 +88,17 @@
                             <path d="M3 18h1" />
                         </svg>
                         Purchase Items List
+                    </a>
+
+                    <a href="{{ route('returns.index') }}"
+                        class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium
+                        {{ request()->routeIs('returns.*') ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100' }}">
+                            <svg class="h-5 w-5 flex-none opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path d="M7 7h10v10H7z" />
+                                <path d="M7 12h10" />
+                                <path d="M12 7v10" />
+                            </svg>
+                            Returns
                     </a>
 
                     <a href="{{ route('groups.index') }}"

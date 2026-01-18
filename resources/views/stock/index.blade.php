@@ -109,7 +109,7 @@
                         </td>
 
                         <td class="px-4 py-2 text-right">
-                            {{ number_format((float)($r->last_purchase_price ?? 0), 2) }}
+                            {{ number_format((float)($r->last_purchase_price ?? 0), 0) }}
                         </td>
 
                         <td class="px-4 py-2 text-right">

@@ -11,6 +11,9 @@
 
     $valueLast = round($balance * $lastPurchase, 2);
     $valueAvg  = round($balance * $avgPurchase, 2);
+
+    $isLow = (bool)($summary['is_low'] ?? false);
+    $thresholdUsed = (float)($summary['threshold_used'] ?? 0);
 @endphp
 
 <div class="max-w-7xl mx-auto space-y-6">
@@ -58,34 +61,39 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="rounded-xl border bg-white p-4">
             <div class="text-sm text-gray-600">Balance Stock</div>
-            <div class="mt-2 text-2xl font-semibold">{{ number_format($balance, 0) }}</div>
-            <div class="text-xs text-gray-600 mt-1">Total In: {{ number_format($totalIn, 0) }} | Total Out: {{ number_format($totalOut, 0) }}</div>
+            <div class="mt-2 text-2xl font-semibold">{{ number_format($balance, 3) }}</div>
+            <div class="text-xs text-gray-600 mt-1">Total In: {{ number_format($totalIn, 3) }} | Total Out: {{ number_format($totalOut, 3) }}</div>
         </div>
 
         <div class="rounded-xl border bg-white p-4">
             <div class="text-sm text-gray-600">Last Purchase Price</div>
-            <div class="mt-2 text-2xl font-semibold">{{ number_format($lastPurchase, 0) }}</div>
-            <div class="text-xs text-gray-600 mt-1">Value (Last): {{ number_format($valueLast, 0) }}</div>
+            <div class="mt-2 text-2xl font-semibold">{{ number_format($lastPurchase, 2) }}</div>
+            <div class="text-xs text-gray-600 mt-1">Value (Last): {{ number_format($valueLast, 2) }}</div>
         </div>
 
         <div class="rounded-xl border bg-white p-4">
             <div class="text-sm text-gray-600">Avg Purchase Price</div>
-            <div class="mt-2 text-2xl font-semibold">{{ number_format($avgPurchase, 0) }}</div>
-            <div class="text-xs text-gray-600 mt-1">Value (Avg): {{ number_format($valueAvg, 0) }}</div>
+            <div class="mt-2 text-2xl font-semibold">{{ number_format($avgPurchase, 2) }}</div>
+            <div class="text-xs text-gray-600 mt-1">Value (Avg): {{ number_format($valueAvg, 2) }}</div>
         </div>
 
         <div class="rounded-xl border bg-white p-4">
-            <div class="text-sm text-gray-600">Low Stock Threshold</div>
-            <div class="mt-2 text-2xl font-semibold">
-                {{ $item->low_stock_threshold !== null ? number_format((float)$item->low_stock_threshold, 3) : 'Default' }}
-            </div>
-            <div class="text-xs text-gray-600 mt-1">
-                Status:
-                @if(!empty($summary['is_low']))
-                    <span class="font-semibold text-red-700">Low</span>
+            <div class="text-sm text-gray-600">Status</div>
+
+            <div class="mt-2">
+                @if($isLow)
+                    <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">
+                        Low Stock
+                    </span>
                 @else
-                    <span class="font-semibold text-green-700">OK</span>
+                    <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
+                        OK
+                    </span>
                 @endif
+            </div>
+
+            <div class="text-xs text-gray-600 mt-2">
+                Min Threshold: <span class="font-semibold">{{ number_format($thresholdUsed, 3) }}</span>
             </div>
         </div>
     </div>
@@ -130,9 +138,10 @@
             <thead class="bg-gray-50 text-gray-600">
                 <tr>
                     <th class="px-4 py-3 text-left font-semibold">Date</th>
-                    <th class="px-4 py-3 text-left font-semibold">Specification</th>
+                    <th class="px-4 py-3 text-left font-semibold">Spec</th>
                     <th class="px-4 py-3 text-right font-semibold">Qty In</th>
                     <th class="px-4 py-3 text-right font-semibold">Price</th>
+                    <th class="px-4 py-3 text-left font-semibold">By</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -140,12 +149,13 @@
                     <tr>
                         <td class="px-4 py-2 whitespace-nowrap">{{ $row->txn_date }}</td>
                         <td class="px-4 py-2">{{ $row->specification_snapshot ?? '-' }}</td>
-                        <td class="px-4 py-2 text-right">{{ number_format((float)$row->qty_in, 0) }}</td>
-                        <td class="px-4 py-2 text-right">{{ number_format((float)$row->unit_price, 0) }}</td>
+                        <td class="px-4 py-2 text-right">{{ number_format((float)$row->qty_in, 3) }}</td>
+                        <td class="px-4 py-2 text-right">{{ number_format((float)$row->unit_price, 2) }}</td>
+                        <td class="px-4 py-2">{{ $row->creator?->name ?? '-' }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td class="px-4 py-3 text-gray-600" colspan="4">No purchase history found for selected filters.</td>
+                        <td class="px-4 py-3 text-gray-600" colspan="5">No purchase history found for selected filters.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -167,9 +177,10 @@
             <thead class="bg-gray-50 text-gray-600">
                 <tr>
                     <th class="px-4 py-3 text-left font-semibold">Date</th>
-                    <th class="px-4 py-3 text-left font-semibold">Specification</th>
+                    <th class="px-4 py-3 text-left font-semibold">Spec</th>
                     <th class="px-4 py-3 text-right font-semibold">Qty Out</th>
                     <th class="px-4 py-3 text-right font-semibold">Price</th>
+                    <th class="px-4 py-3 text-left font-semibold">By</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -177,12 +188,13 @@
                     <tr>
                         <td class="px-4 py-2 whitespace-nowrap">{{ $row->txn_date }}</td>
                         <td class="px-4 py-2">{{ $row->specification_snapshot ?? '-' }}</td>
-                        <td class="px-4 py-2 text-right">{{ number_format((float)$row->qty_out, 0) }}</td>
-                        <td class="px-4 py-2 text-right">{{ number_format((float)$row->unit_price, 0) }}</td>
+                        <td class="px-4 py-2 text-right">{{ number_format((float)$row->qty_out, 3) }}</td>
+                        <td class="px-4 py-2 text-right">{{ number_format((float)$row->unit_price, 2) }}</td>
+                        <td class="px-4 py-2">{{ $row->creator?->name ?? '-' }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td class="px-4 py-3 text-gray-600" colspan="4">No sale/issue history found for selected filters.</td>
+                        <td class="px-4 py-3 text-gray-600" colspan="5">No sale/issue history found for selected filters.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -190,6 +202,49 @@
 
         <div class="p-4">
             {{ $saleHistory->appends(['from' => $from, 'to' => $to])->links() }}
+        </div>
+    </div>
+
+    {{-- Issue Return History (INWARD) --}}
+    <div class="rounded-xl border bg-white overflow-x-auto">
+        <div class="px-4 py-3 border-b">
+            <div class="text-sm font-semibold">Issue Return History (Inward)</div>
+            <div class="text-xs text-gray-600">Returned items (from issues) with user details.</div>
+        </div>
+
+        <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-gray-600">
+                <tr>
+                    <th class="px-4 py-3 text-left font-semibold">Date</th>
+                    <th class="px-4 py-3 text-left font-semibold">Spec</th>
+                    <th class="px-4 py-3 text-right font-semibold">Qty In</th>
+                    <th class="px-4 py-3 text-right font-semibold">Price</th>
+                    <th class="px-4 py-3 text-left font-semibold">By</th>
+                    <th class="px-4 py-3 text-left font-semibold">Ref</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                @forelse($issueReturnHistory as $row)
+                    <tr>
+                        <td class="px-4 py-2 whitespace-nowrap">{{ $row->txn_date }}</td>
+                        <td class="px-4 py-2">{{ $row->specification_snapshot ?? '-' }}</td>
+                        <td class="px-4 py-2 text-right">{{ number_format((float)$row->qty_in, 3) }}</td>
+                        <td class="px-4 py-2 text-right">{{ number_format((float)$row->unit_price, 2) }}</td>
+                        <td class="px-4 py-2">{{ $row->creator?->name ?? '-' }}</td>
+                        <td class="px-4 py-2 text-xs text-gray-600">
+                            {{ $row->ref_table }}#{{ $row->ref_id }}
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td class="px-4 py-3 text-gray-600" colspan="6">No issue-return history found for selected filters.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+
+        <div class="p-4">
+            {{ $issueReturnHistory->appends(['from' => $from, 'to' => $to])->links() }}
         </div>
     </div>
 

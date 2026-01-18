@@ -97,23 +97,65 @@ class StockService
 
 public function getAvailableStockDetailed(int $itemId): array
 {
-    $row = StockLedger::query()
-        ->selectRaw('
-            COALESCE(SUM(qty_in),0) as qty_in_sum,
-            COALESCE(SUM(qty_out),0) as qty_out_sum
-        ')
+    $defaultThreshold = (float) \App\Models\AppSetting::get('default_low_stock_threshold', 0);
+
+    // Totals
+    $totals = \App\Models\StockLedger::query()
         ->where('item_id', $itemId)
+        ->selectRaw('
+            COALESCE(SUM(qty_in),0) as total_in,
+            COALESCE(SUM(qty_out),0) as total_out,
+            (COALESCE(SUM(qty_in),0) - COALESCE(SUM(qty_out),0)) as balance
+        ')
         ->first();
 
-    $in = (float) ($row->qty_in_sum ?? 0);
-    $out = (float) ($row->qty_out_sum ?? 0);
+    $totalIn = (float)($totals->total_in ?? 0);
+    $totalOut = (float)($totals->total_out ?? 0);
+    $balance = (float)($totals->balance ?? 0);
+
+    // Weighted average purchase price (PURCHASE only)
+    $avgRow = \App\Models\StockLedger::query()
+        ->where('item_id', $itemId)
+        ->where('txn_type', 'PURCHASE')
+        ->selectRaw('
+            CASE
+                WHEN COALESCE(SUM(qty_in),0) = 0 THEN 0
+                ELSE COALESCE(SUM(qty_in * unit_price),0) / COALESCE(SUM(qty_in),0)
+            END as avg_purchase_price
+        ')
+        ->first();
+
+    $avgPurchase = (float)($avgRow->avg_purchase_price ?? 0);
+
+    // Last purchase price
+    $lastPurchase = (float) \App\Models\StockLedger::query()
+        ->where('item_id', $itemId)
+        ->where('txn_type', 'PURCHASE')
+        ->orderByDesc('txn_date')
+        ->orderByDesc('id')
+        ->value('unit_price') ?? 0;
+
+    // Threshold and low flag
+    $item = \App\Models\Item::query()->select(['id','low_stock_threshold'])->find($itemId);
+    $thresholdUsed = $item && $item->low_stock_threshold !== null
+        ? (float)$item->low_stock_threshold
+        : $defaultThreshold;
+
+    $isLow = $thresholdUsed > 0 ? ($balance <= $thresholdUsed) : false;
 
     return [
-        'available' => $in - $out,
-        'total_in' => $in,
-        'total_out' => $out,
+        'total_in' => $totalIn,
+        'total_out' => $totalOut,
+        'balance' => $balance,
+
+        'avg_purchase_price' => round($avgPurchase, 4),
+        'last_purchase_price' => round($lastPurchase, 4),
+
+        'threshold_used' => $thresholdUsed,
+        'is_low' => $isLow,
     ];
 }
+
 public function addReturnInLedger(array $data)
 {
     return \App\Models\StockLedger::create([
@@ -147,6 +189,24 @@ public function addReturnOutLedger(array $data)
         'created_by' => $data['created_by'],
     ]);
 }
+
+public function addIssueReturnInLedger(array $data)
+{
+    return \App\Models\StockLedger::create([
+        'txn_date' => $data['txn_date'],
+        'txn_type' => 'ISSUE_RETURN_IN',
+        'ref_table' => 'issue_returns',
+        'ref_id' => $data['ref_id'],
+        'ref_line_id' => $data['ref_line_id'],
+        'item_id' => $data['item_id'],
+        'qty_in' => $data['quantity'],
+        'qty_out' => 0,
+        'unit_price' => $data['unit_price'],
+        'specification_snapshot' => $data['specification'] ?? null,
+        'created_by' => $data['created_by'],
+    ]);
+}
+
 
 
 
