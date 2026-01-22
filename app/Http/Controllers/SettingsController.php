@@ -36,26 +36,16 @@ class SettingsController extends Controller
             ->orderBy('issued_to')
             ->pluck('issued_to');
 
-        return view('settings.index', compact('defaultLow','backup','groups','items','suppliers','issuedTos'));
+        return view('settings.index', compact('defaultLow','groups','items','suppliers','issuedTos'));
     }
 
     public function update(UpdateSettingsRequest $request)
-    {
-        $data = $request->validated();
+{
+    $data = $request->validated();
 
-        AppSetting::set('default_low_stock_threshold', (string)($data['default_low_stock_threshold'] ?? '0'));
+    AppSetting::set('default_low_stock_threshold', (string)($data['default_low_stock_threshold'] ?? '0'));
 
-        BackupSetting::updateOrCreate(
-            ['id' => optional(BackupSetting::query()->latest('id')->first())->id],
-            [
-                'enabled' => (bool)($data['backup_enabled'] ?? false),
-                'frequency' => $data['backup_frequency'],
-                'weekly_day' => (int)$data['backup_weekly_day'],
-                'time_hm' => $data['backup_time_hm'],
-                'backup_path' => $data['backup_path'] ?? null,
-            ]
-        );
+    return redirect()->route('settings.index')->with('status', 'Settings saved');
+}
 
-        return redirect()->route('settings.index')->with('status', 'Settings saved');
-    }
 }
