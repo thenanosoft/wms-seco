@@ -1,8 +1,8 @@
 <?php $__env->startSection('content'); ?>
-<div class="max-w-6xl mx-auto" x-data="purchaseForm(<?php echo e($groups->toJson()); ?>, <?php echo e($items->toJson()); ?>)">
+<div class="max-w-6xl mx-auto" x-data="issueForm(<?php echo e($groups->toJson()); ?>, <?php echo e($items->toJson()); ?>)">
     <div class="mb-6">
-        <h1 class="text-2xl font-semibold">New Purchase (Inward)</h1>
-        <p class="mt-1 text-sm text-gray-600">Fast entry screen. Add multiple item lines then save.</p>
+        <h1 class="text-2xl font-semibold">New Issue (Outward)</h1>
+        <p class="mt-1 text-sm text-gray-600">Fast entry screen. System will block issue more than available stock.</p>
     </div>
 
     <?php if($errors->any()): ?>
@@ -16,21 +16,21 @@
         </div>
     <?php endif; ?>
 
-    <form method="POST" action="<?php echo e(route('purchases.store')); ?>" class="space-y-4">
+    <form method="POST" action="<?php echo e(route('issues.store')); ?>" class="space-y-4">
         <?php echo csrf_field(); ?>
 
         <div class="rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                     <label class="text-sm font-medium">Date</label>
-                    <input type="date" name="purchase_date" class="mt-1 w-full rounded-lg border-gray-200"
-                           value="<?php echo e(old('purchase_date', now()->format('Y-m-d'))); ?>" required>
+                    <input type="date" name="issue_date" class="mt-1 w-full rounded-lg border-gray-200"
+                           value="<?php echo e(old('issue_date', now()->format('Y-m-d'))); ?>" required>
                 </div>
 
                 <div>
-                    <label class="text-sm font-medium">Supplier</label>
-                    <input type="text" name="supplier_name" class="mt-1 w-full rounded-lg border-gray-200"
-                           value="<?php echo e(old('supplier_name')); ?>" placeholder="Optional">
+                    <label class="text-sm font-medium">Issued To</label>
+                    <input type="text" name="issued_to" class="mt-1 w-full rounded-lg border-gray-200"
+                           value="<?php echo e(old('issued_to')); ?>" placeholder="Optional">
                 </div>
 
                 <div>
@@ -51,7 +51,7 @@
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <div class="text-sm font-semibold">Items</div>
-                    <div class="text-xs text-gray-600">Tip: Use Tab/Enter for faster entry.</div>
+                    <div class="text-xs text-gray-600">Tip: Select group then search item.</div>
                 </div>
 
                 <button type="button"
@@ -92,20 +92,10 @@
                                 </td>
 
                                 <td class="px-3 py-2">
-                                    <!-- <select class="w-56 rounded-lg border-gray-200"
-                                            :name="`lines[${idx}][item_id]`"
-                                            x-model="line.item_id"
-                                            @change="onItemChange(idx)"
-                                            required>
-                                        <option value="">Select</option>
-                                        <template x-for="it in filteredItems(idx)" :key="it.id">
-                                            <option :value="it.id" x-text="`${it.item_code} - ${it.name}`"></option>
-                                        </template>
-                                    </select> -->
                                     <div class="w-72">
                                         <input
                                             type="text"
-                                            class="w-full w-72 rounded-lg border-gray-200"
+                                            class="w-full rounded-lg border-gray-200"
                                             x-model="line.item_search"
                                             @input="filterItemSearch(idx)"
                                             @focus="line.show_items = true"
@@ -135,11 +125,10 @@
                                             </div>
                                         </div>
 
-                                    <!-- <div class="mt-1 text-xs text-gray-600" x-show="line.item_id">
-                                        Selected: <span class="font-semibold" x-text="line.item_label"></span>
-                                    </div> -->
-                                </div>
-
+                                        <div class="mt-1 text-xs text-gray-600" x-show="line.item_id">
+                                            Selected: <span class="font-semibold" x-text="line.item_label"></span>
+                                        </div>
+                                    </div>
                                 </td>
 
                                 <td class="px-3 py-2">
@@ -152,24 +141,31 @@
                                 <td class="px-3 py-2">
                                     <input type="number" step="0.01" min="0"
                                            class="w-28 rounded-lg border-gray-200"
-                                           :name="`lines[${idx}][purchase_price]`"
-                                           x-model.number="line.purchase_price"
-                                           @input="recalc(idx)"
-                                           required>
+                                           :name="`lines[${idx}][issue_price]`"
+                                           x-model.number="line.issue_price"
+                                           @input="recalc(idx)">
                                 </td>
 
                                 <td class="px-3 py-2">
-                                    <input type="number" step="0.001" min="0.001"
-                                           class="w-24 rounded-lg border-gray-200"
-                                           :name="`lines[${idx}][quantity]`"
-                                           x-model.number="line.quantity"
-                                           @input="recalc(idx)"
-                                           required>
+                                    <input type="number"
+       step="0.001"
+       min="0.001"
+       :max="line.available_stock"
+       class="w-24 rounded-lg border-gray-200"
+       :name="`lines[${idx}][quantity]`"
+       x-model.number="line.quantity"
+       @input="validateQty(idx)"
+       required>
+       <div class="mt-1 text-xs text-gray-600">
+    Available:
+    <span class="font-semibold" x-text="line.available_stock"></span>
+</div>
+
+
                                 </td>
 
                                 <td class="px-3 py-2 font-semibold">
                                     <span x-text="formatMoney(line.line_total)"></span>
-                                    <input type="hidden" :name="`lines[${idx}][line_total]`" :value="line.line_total">
                                 </td>
 
                                 <td class="px-3 py-2 text-right">
@@ -197,21 +193,21 @@
         </div>
 
         <div class="flex items-center justify-end gap-3">
-            <a href="<?php echo e(route('purchases.index')); ?>"
+            <a href="<?php echo e(route('issues.index')); ?>"
                class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium hover:bg-gray-50">
                 Cancel
             </a>
 
             <button type="submit"
                     class="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800">
-                Save Purchase
+                Save Issue
             </button>
         </div>
     </form>
 </div>
 
 <script>
-    function purchaseForm(groups, items) {
+function issueForm(groups, items) {
     return {
         groups,
         items,
@@ -232,9 +228,10 @@
                 show_items: false,
                 filtered_items: [],
                 specification: '',
-                purchase_price: 0,
+                issue_price: 0,
                 quantity: 1,
-                line_total: 0
+                line_total: 0,
+                available_stock: 0,
             });
             this.recalcAll();
         },
@@ -271,13 +268,12 @@
             const line = this.lines[idx];
             const q = (line.item_search || '').toLowerCase().trim();
 
-            const pool = this.itemsForGroup(line.group_id);
-
-            // if no group selected, show empty list (forces correct flow)
             if (!line.group_id) {
                 line.filtered_items = [];
                 return;
             }
+
+            const pool = this.itemsForGroup(line.group_id);
 
             if (q.length === 0) {
                 line.filtered_items = pool.slice(0, 30);
@@ -294,31 +290,55 @@
         },
 
         pickItem(idx, it) {
-            // Prevent duplicates in the same purchase
-            const duplicate = this.lines.some((l, i) => i !== idx && String(l.item_id) === String(it.id));
-            if (duplicate) {
-                alert('This item is already added in another line. Please change quantity there.');
-                return;
-            }
+    const duplicate = this.lines.some((l, i) => i !== idx && String(l.item_id) === String(it.id));
+    if (duplicate) {
+        alert('This item is already added in another line.');
+        return;
+    }
 
-            const line = this.lines[idx];
-            line.item_id = it.id;
-            line.item_label = `${it.item_code} - ${it.name}`;
-            line.item_search = line.item_label;
-            line.show_items = false;
+    const line = this.lines[idx];
 
-            // Auto-fill specification if item has default spec (if not loaded, stays empty)
-            const defaultSpec = it.default_spec || '';
-            if (!line.specification && defaultSpec) {
-                line.specification = defaultSpec;
-            }
+    line.item_id = it.id;
+    line.item_label = `${it.item_code} - ${it.name}`;
+    line.item_search = line.item_label;
+    line.show_items = false;
 
-            this.recalc(idx);
-        },
+    // Auto-fill price from last purchase
+    line.issue_price = Number(it.last_price || 0);
 
+    // Available stock
+    line.available_stock = Number(it.available_stock || 0);
+
+    // Reset qty if more than stock
+    if (line.quantity > line.available_stock) {
+        line.quantity = line.available_stock;
+    }
+
+    // Auto-fill spec
+    if (!line.specification && it.default_spec) {
+        line.specification = it.default_spec;
+    }
+
+    this.recalc(idx);
+},
+
+validateQty(idx) {
+    const line = this.lines[idx];
+
+    if (line.quantity > line.available_stock) {
+        alert(`Only ${line.available_stock} in stock.`);
+        line.quantity = line.available_stock;
+    }
+
+    if (line.quantity < 0) {
+        line.quantity = 0;
+    }
+
+    this.recalc(idx);
+},
         recalc(idx) {
             const line = this.lines[idx];
-            const price = Number(line.purchase_price || 0);
+            const price = Number(line.issue_price || 0);
             const qty = Number(line.quantity || 0);
             line.line_total = Math.round(price * qty * 100) / 100;
             this.recalcAll();
@@ -337,4 +357,4 @@
 </script>
 <?php $__env->stopSection(); ?>
 
-<?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /Users/farhanellahi/Development/web/laravel/wms/resources/views/purchase/create.blade.php ENDPATH**/ ?>
+<?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /Users/farhanellahi/Development/web/laravel/wms/resources/views/issue/create.blade.php ENDPATH**/ ?>

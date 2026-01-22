@@ -43,7 +43,10 @@ class BackupService
         $host = config('database.connections.mysql.host') ?: '127.0.0.1';
         $port = config('database.connections.mysql.port') ?: 3306;
 
-        $dumpCmd = "mysqldump --single-transaction --quick --routines --triggers --databases \"{$db}\" --host=\"{$host}\" --port=\"{$port}\" --user=\"{$user}\"";
+        $dumpCmd = "mysqldump --single-transaction --quick --routines --triggers "
+    . "--add-drop-table --add-drop-database "
+    . "--databases \"{$db}\" --host=\"{$host}\" --port=\"{$port}\" --user=\"{$user}\"";
+
         if ($pass !== null && $pass !== '') {
             $dumpCmd .= " --password=\"" . addslashes($pass) . "\"";
         }
@@ -68,32 +71,36 @@ class BackupService
      * If file is data-only (no CREATE TABLE), this will run migrate:fresh before applying.
      */
     public function restoreFromSqlFile(string $absoluteSqlPath): void
-    {
-        if (!File::exists($absoluteSqlPath)) {
-            throw new \RuntimeException('SQL file not found: ' . $absoluteSqlPath);
-        }
-
-        $sql = File::get($absoluteSqlPath);
-        $looksLikeSchema = stripos($sql, 'CREATE TABLE') !== false || stripos($sql, 'DROP TABLE') !== false;
-
-        if (!$looksLikeSchema) {
-            // Clean DB then apply data-only SQL
-            Artisan::call('migrate:fresh', ['--force' => true]);
-        }
-
-        // Execute safely (disable FK checks)
-        DB::beginTransaction();
-        try {
-            DB::statement('SET FOREIGN_KEY_CHECKS=0');
-            $this->executeSqlLarge($sql);
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            try { DB::statement('SET FOREIGN_KEY_CHECKS=1'); } catch (\Throwable $ignored) {}
-            throw $e;
-        }
+{
+    if (!File::exists($absoluteSqlPath)) {
+        throw new \RuntimeException('SQL file not found: ' . $absoluteSqlPath);
     }
+
+    $sql = File::get($absoluteSqlPath);
+
+    // If dump contains schema, always wipe current DB to avoid "table exists" errors.
+    $looksLikeSchema =
+        stripos($sql, 'CREATE TABLE') !== false ||
+        stripos($sql, 'DROP TABLE') !== false ||
+        stripos($sql, 'CREATE DATABASE') !== false;
+
+    // Restore is destructive, so we explicitly clean DB before applying SQL.
+    DB::statement('SET FOREIGN_KEY_CHECKS=0');
+
+    if ($looksLikeSchema) {
+        $this->dropAllTables();
+    } else {
+        // Data-only dump, rebuild schema via migrations first.
+        Artisan::call('migrate:fresh', ['--force' => true]);
+    }
+
+    try {
+        $this->executeSqlLarge($sql);
+    } finally {
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+    }
+}
+
 
     public function listBackups(?BackupSetting $setting = null): array
 {
@@ -195,6 +202,22 @@ class BackupService
     }
 
     return $full;
+}
+
+private function dropAllTables(): void
+{
+    $dbName = config('database.connections.mysql.database');
+
+    $tables = DB::select(
+        "SELECT table_name AS name FROM information_schema.tables WHERE table_schema = ?",
+        [$dbName]
+    );
+
+    foreach ($tables as $t) {
+        $table = $t->name ?? null;
+        if (!$table) continue;
+        DB::statement("DROP TABLE IF EXISTS `{$table}`");
+    }
 }
 
 }
