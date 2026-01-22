@@ -2,96 +2,175 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BackupSetting;
+use App\Services\BackupService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Response;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class BackupController extends Controller
 {
-    public function index()
+    public function index(BackupService $backupService)
     {
-        return view('backup.index');
-    }
-
-    public function manualBackup()
-    {
-        $path = storage_path('app/backups');
-        if (!File::exists($path)) File::makeDirectory($path, 0755, true);
-
-        Artisan::call('wms:backup-now', ['--path' => $path]);
-
-        // Pick latest file
-        $files = collect(File::files($path))
-            ->sortByDesc(fn($f) => $f->getMTime())
-            ->values();
-
-        if ($files->isEmpty()) {
-            return back()->withErrors(['backup' => 'Backup failed. No SQL file created.']);
+        $settings = BackupSetting::query()->latest('id')->first();
+        if (!$settings) {
+            $settings = BackupSetting::query()->create([
+                'enabled' => false,
+                'frequency' => 'daily',
+                'weekly_day' => 1,
+                'time_hm' => '02:00',
+                'backup_path' => BackupService::DEFAULT_DIR,
+            ]);
         }
 
-        $latest = $files->first();
+        $autoBackups = $backupService->listBackups($settings);
 
-        return Response::download($latest->getPathname(), $latest->getFilename());
+        return view('backup.index', [
+            'settings' => $settings,
+            'autoBackups' => $autoBackups,
+        ]);
     }
 
-    public function restore(Request $request)
+    /**
+     * Manual backup (download).
+     */
+    public function manualBackup(BackupService $backupService)
     {
-        $request->validate([
-            'sql_file' => ['required','file','mimes:sql,txt'],
+        $settings = BackupSetting::query()->latest('id')->first();
+        if (!$settings) {
+            abort(400, 'Backup settings not configured.');
+        }
+
+        $fullPath = $backupService->createBackup($settings);
+return response()->download($fullPath, basename($fullPath), [
+    'Content-Type' => 'application/sql',
+]);
+    }
+
+    /**
+ * Download a backup file from auto-backup folder (storage/app/<backup_path>).
+ */
+public function download(string $filename, BackupService $backupService)
+{
+    $settings = BackupSetting::query()->latest('id')->first();
+    if (!$settings) {
+        abort(400, 'Backup settings not configured.');
+    }
+
+    // Safety: only allow .sql filename, no path traversal
+    if (!preg_match('/^[A-Za-z0-9._-]+\.sql$/', $filename)) {
+        abort(400, 'Invalid filename.');
+    }
+
+    $full = $backupService->resolveBackupFullPath($settings, $filename);
+
+    // Storage::download expects a path relative to disk, so use response()->download for absolute path
+    if (!file_exists($full)) {
+        abort(404, 'Backup file not found.');
+    }
+
+    return response()->download($full, $filename, [
+        'Content-Type' => 'application/sql',
+    ]);
+}
+
+/**
+ * Download the latest backup (newest .sql) from configured backup folder.
+ */
+public function downloadLatest(BackupService $backupService)
+{
+    $settings = BackupSetting::query()->latest('id')->first();
+    if (!$settings) {
+        abort(400, 'Backup settings not configured.');
+    }
+
+    $list = $backupService->listBackups($settings); // newest first already
+    if (empty($list)) {
+        return back()->withErrors(['backup' => 'No backup files available.']);
+    }
+
+    $latest = $list[0];
+    $full = $latest['full_path'] ?? null;
+    $name = $latest['name'] ?? null;
+
+    if (!$full || !$name || !file_exists($full)) {
+        return back()->withErrors(['backup' => 'Latest backup file not found on disk.']);
+    }
+
+    return response()->download($full, $name, [
+        'Content-Type' => 'application/sql',
+    ]);
+}
+
+
+
+    /**
+     * Update backup settings from backup screen.
+     */
+    public function updateSettings(Request $request)
+    {
+        $validated = $request->validate([
+            'enabled' => ['nullable', 'boolean'],
+            'frequency' => ['required', Rule::in(['daily','weekly'])],
+            'weekly_day' => ['nullable', 'integer', 'min:0', 'max:6'],
+            'time_hm' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
+            // IMPORTANT: we store backups inside storage/app by default.
+            // User can customize folder name. This is safe on a local LAN app.
+            'backup_path' => ['required', 'string', 'max:180'],
         ]);
 
-        $tmp = $request->file('sql_file')->storeAs('restore', 'restore_' . time() . '.sql');
-
-        $full = storage_path('app/' . $tmp);
-
-        // Restore using mysql CLI
-        $db = config('database.connections.mysql.database');
-        $user = config('database.connections.mysql.username');
-        $pass = config('database.connections.mysql.password');
-        $host = config('database.connections.mysql.host');
-
-        $cmd = sprintf(
-            'mysql -h%s -u%s %s %s < %s',
-            escapeshellarg($host),
-            escapeshellarg($user),
-            $pass ? ('-p' . escapeshellarg($pass)) : '',
-            escapeshellarg($db),
-            escapeshellarg($full)
-        );
-
-        $code = 0;
-        system($cmd, $code);
-
-        if ($code !== 0) {
-            try {
-                $sql = File::get($full);
-                $this->runSqlFallback($sql);
-            } catch (\Throwable $e) {
-                return back()->withErrors(['restore' => 'Restore failed. mysql CLI not available and fallback execution failed: ' . $e->getMessage()]);
-            }
+        $settings = BackupSetting::query()->latest('id')->first();
+        if (!$settings) {
+            $settings = new BackupSetting();
         }
 
-        return redirect()->route('backup.index')->with('status', 'Restore completed successfully');
+        $settings->enabled = (bool)($validated['enabled'] ?? false);
+        $settings->frequency = $validated['frequency'];
+        $settings->weekly_day = (int)($validated['weekly_day'] ?? 1);
+        $settings->time_hm = $validated['time_hm'];
+        $settings->backup_path = trim($validated['backup_path']);
+        $settings->save();
+
+        return back()->with('success', 'Backup settings saved.');
     }
 
-    private function runSqlFallback(string $sql): void
+    /**
+     * Restore database from uploaded SQL or from a selected auto backup.
+     */
+    public function restore(Request $request, BackupService $backupService)
     {
-        // Simple fallback for data-only / basic dumps (no DELIMITER blocks)
-        $sql = preg_replace('/^\s*(--|#).*$/m', '', $sql) ?? $sql;
-        $sql = str_replace("\r\n", "\n", $sql);
+        $request->validate([
+            'sql_file' => ['nullable', 'file', 'mimetypes:text/plain,application/sql,application/octet-stream', 'max:51200'],
+            'selected_backup' => ['nullable', 'string', 'max:255'],
+        ]);
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=0');
-
-        // Split on semicolons followed by newline to reduce false splits
-        $statements = preg_split('/;\s*\n/', $sql) ?: [];
-        foreach ($statements as $stmt) {
-            $stmt = trim($stmt);
-            if ($stmt === '') continue;
-            DB::unprepared($stmt);
+        $settings = BackupSetting::query()->latest('id')->first();
+        if (!$settings) {
+            return back()->withErrors(['restore' => 'Backup settings not configured.']);
         }
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        try {
+            if ($request->hasFile('sql_file')) {
+                $uploaded = $request->file('sql_file');
+                $tmpName = 'restore_' . time() . '_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $uploaded->getClientOriginalName());
+                $dir = storage_path('app/restore');
+                if (!is_dir($dir)) {
+                    mkdir($dir, 0755, true);
+                }
+                $full = $uploaded->move($dir, $tmpName)->getPathname();
+                $backupService->restoreFromSqlFile($full);
+                return back()->with('success', 'Database restored successfully.');
+            }
+
+            if ($request->filled('selected_backup')) {
+                $full = $backupService->resolveBackupFullPath($settings, $request->string('selected_backup')->toString());
+                $backupService->restoreFromSqlFile($full);
+                return back()->with('success', 'Database restored successfully.');
+            }
+
+            return back()->withErrors(['restore' => 'Please choose an SQL file or select a backup.']);
+        } catch (\Throwable $e) {
+            return back()->withErrors(['restore' => 'Restore failed. ' . $e->getMessage()]);
+        }
     }
 }

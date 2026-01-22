@@ -8,9 +8,9 @@
         <p class="text-sm text-gray-600">Admin only. Manual backup download and restore from SQL file.</p>
     </div>
 
-    @if(session('status'))
+    @if(session('success'))
         <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-            {{ session('status') }}
+            {{ session('success') }}
         </div>
     @endif
 
@@ -25,31 +25,102 @@
         </div>
     @endif
 
-    <div class="rounded-xl border bg-white p-4 sm:p-6 space-y-4">
-        <h2 class="text-lg font-semibold">Manual Backup</h2>
-        <form method="POST" action="{{ route('backup.manual') }}">
-            @csrf
-            <button class="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800">
-                Create and Download SQL Backup
-            </button>
-        </form>
-        <div class="text-xs text-gray-600">
-            Backup will be created in storage/app/backups and downloaded.
-        </div>
-    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="rounded-xl border bg-white p-4 sm:p-6 space-y-4">
+            <h2 class="text-lg font-semibold">Auto Backup Settings</h2>
+            <form method="POST" action="{{ route('backup.settings.update') }}" class="space-y-4">
+                @csrf
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="enabled" value="1" {{ ($settings?->enabled ?? false) ? 'checked' : '' }}>
+                    Enable auto backup (runs automatically when admin uses the system)
+                </label>
 
-    <div class="rounded-xl border bg-white p-4 sm:p-6 space-y-4">
-        <h2 class="text-lg font-semibold">Restore</h2>
-        <div class="text-sm text-red-700 font-semibold">
-            Warning: Restore will overwrite current database.
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Frequency</label>
+                        <select name="frequency" class="w-full rounded-lg border-gray-200">
+                            @foreach(['daily'=>'Daily','weekly'=>'Weekly'] as $k=>$v)
+                                <option value="{{ $k }}" {{ ($settings?->frequency ?? 'daily') === $k ? 'selected' : '' }}>{{ $v }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Run Time</label>
+                        <input type="time" name="time_hm" value="{{ $settings?->time_hm ?? '18:00' }}" class="w-full rounded-lg border-gray-200">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Backup Folder (inside storage/app)</label>
+                    <input type="text" name="backup_path" value="{{ $settings?->backup_path ?? 'wms_backups' }}" class="w-full rounded-lg border-gray-200" placeholder="wms_backups">
+                    <p class="mt-1 text-xs text-gray-600">Example: <span class="font-mono">wms_backups</span> or <span class="font-mono">wms_backups/branch_A</span></p>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">Save Settings</button>
+                    <span class="text-xs text-gray-600">Last run: {{ $settings?->last_run_at ? $settings->last_run_at->format('Y-m-d H:i') : 'Never' }}</span>
+                </div>
+            </form>
         </div>
-        <form method="POST" action="{{ route('backup.restore') }}" enctype="multipart/form-data" class="space-y-3">
-            @csrf
-            <input type="file" name="sql_file" required class="block">
-            <button class="rounded-lg border border-gray-200 px-5 py-2.5 text-sm hover:bg-gray-50">
-                Restore from SQL File
-            </button>
-        </form>
+
+        <div class="rounded-xl border bg-white p-4 sm:p-6 space-y-4">
+            <h2 class="text-lg font-semibold">Backups</h2>
+            <div class="flex flex-wrap gap-2">
+                <form method="POST" action="{{ route('backup.manual') }}">
+                    @csrf
+                    <button class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">Create Backup Now</button>
+                </form>
+                @if(!empty($autoBackups))
+                    <a href="{{ route('backup.download.latest') }}" class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Download Latest</a>
+                @endif
+            </div>
+
+            <div class="text-xs text-gray-600">Only the last {{ \App\Services\BackupService::RETENTION_COUNT }} auto backups are kept (older files are deleted automatically).</div>
+
+            <div class="border rounded-lg overflow-hidden">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-gray-50 text-gray-600">
+                        <tr>
+                            <th class="px-3 py-2 text-left">File</th>
+                            <th class="px-3 py-2 text-left">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                        @forelse($autoBackups as $b)
+                            <tr>
+                                <td class="px-3 py-2 font-mono text-xs">
+    {{ $b['name'] ?? '' }}
+    <div class="text-gray-500">{{ $b['display'] ?? (($b['date'] ?? '') . ' ' . ($b['time'] ?? '')) }}</div>
+</td>
+
+                                <td class="px-3 py-2">
+                                    <div class="flex flex-wrap gap-2">
+                                        <a href="{{ route('backup.download', ['filename' => $b['name']]) }}" class="rounded border border-gray-200 px-3 py-1.5 text-xs hover:bg-gray-50">Download</a>
+                                        <form method="POST" action="{{ route('backup.restore') }}" onsubmit="return confirm('This will overwrite the current database. Continue?')">
+                                            @csrf
+                                            <input type="hidden" name="selected_backup" value="{{ $b['name'] ?? '' }}">
+                                            <button class="rounded border border-red-200 px-3 py-1.5 text-xs text-red-700 hover:bg-red-50">Restore</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td class="px-3 py-3 text-gray-600" colspan="2">No backup files yet.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="rounded-lg border bg-gray-50 p-3">
+                <div class="text-sm font-semibold">Restore from uploaded SQL</div>
+                <p class="text-xs text-gray-600 mb-2">Use this if a backup file is on your computer. Uploaded SQL is not kept on the server after restore.</p>
+                <form method="POST" action="{{ route('backup.restore') }}" enctype="multipart/form-data" class="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                    @csrf
+                    <input type="file" name="sql_file" required class="block text-sm">
+                    <button class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50" onclick="return confirm('This will overwrite the current database. Continue?')">Restore Upload</button>
+                </form>
+            </div>
+        </div>
     </div>
 
 </div>

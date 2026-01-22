@@ -7,4 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class BackupSetting extends Model
 {
     protected $fillable = ['enabled','frequency','weekly_day','time_hm','backup_path'];
+
+    protected $casts = [
+        'enabled' => 'boolean',
+        'last_run_at' => 'datetime',
+    ];
 }

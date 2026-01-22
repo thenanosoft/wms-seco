@@ -83,8 +83,21 @@ Route::middleware(['auth'])->group(function() {
     ->name('backup.index')
     ->middleware(['auth','role:admin']);
 
+    Route::post('/backup/settings', [\App\Http\Controllers\BackupController::class,'updateSettings'])
+    ->name('backup.settings.update')
+    ->middleware(['auth','role:admin']);
+
     Route::post('/backup/manual', [\App\Http\Controllers\BackupController::class,'manualBackup'])
     ->name('backup.manual')
+    ->middleware(['auth','role:admin']);
+
+    Route::get('/backup/download/latest', [\App\Http\Controllers\BackupController::class,'downloadLatest'])
+    ->name('backup.download.latest')
+    ->middleware(['auth','role:admin']);
+
+    Route::get('/backup/download/{filename}', [\App\Http\Controllers\BackupController::class,'download'])
+    ->name('backup.download')
+    ->where('filename', '^[A-Za-z0-9_\-\.]+$')
     ->middleware(['auth','role:admin']);
 
     Route::post('/backup/restore', [\App\Http\Controllers\BackupController::class,'restore'])

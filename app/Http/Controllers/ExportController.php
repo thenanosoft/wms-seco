@@ -426,6 +426,22 @@ class ExportController extends Controller
 
 public function csvFullHistory(Request $request)
 {
+    // Full file from Stock Ledger with extra business fields
+    // It includes: supplier (purchase), issued_to (issue), and reference numbers where available.
+    set_time_limit(0);
+
+    // Quick date presets
+    if ($request->filled('date_preset') && !$request->filled('from') && !$request->filled('to')) {
+        $preset = $request->string('date_preset')->toString();
+        if ($preset === 'today') {
+            $request->merge(['from' => now()->toDateString(), 'to' => now()->toDateString()]);
+        } elseif ($preset === 'week') {
+            $request->merge(['from' => now()->startOfWeek()->toDateString(), 'to' => now()->endOfWeek()->toDateString()]);
+        } elseif ($preset === 'month') {
+            $request->merge(['from' => now()->startOfMonth()->toDateString(), 'to' => now()->endOfMonth()->toDateString()]);
+        }
+    }
+
     $query = StockLedger::query()
         ->select([
             'stock_ledger.txn_date',
@@ -436,27 +452,55 @@ public function csvFullHistory(Request $request)
             'stock_ledger.ref_table',
             'stock_ledger.ref_id',
             'stock_ledger.notes',
+            'groups.id as group_id',
             'groups.group_code',
+            'items.id as item_id',
             'items.item_code',
             'items.name as item_name',
+            'purchases.supplier_name',
+            'purchases.reference_no as purchase_ref_no',
+            'issues.issued_to',
+            'issues.reference_no as issue_ref_no',
         ])
         ->join('items', 'items.id', '=', 'stock_ledger.item_id')
         ->join('groups', 'groups.id', '=', 'items.group_id')
+        ->leftJoin('purchases', function ($join) {
+            $join->on('purchases.id', '=', 'stock_ledger.ref_id')
+                ->where('stock_ledger.ref_table', '=', 'purchases');
+        })
+        ->leftJoin('issues', function ($join) {
+            $join->on('issues.id', '=', 'stock_ledger.ref_id')
+                ->where('stock_ledger.ref_table', '=', 'issues');
+        })
         ->orderBy('stock_ledger.txn_date')
         ->orderBy('stock_ledger.id');
 
     if ($request->filled('group_id')) {
-        $query->where('groups.id', $request->group_id);
+        $query->where('groups.id', (int)$request->group_id);
+    }
+    if ($request->filled('item_id')) {
+        $query->where('items.id', (int)$request->item_id);
+    }
+    if ($request->filled('supplier')) {
+        $query->where('purchases.supplier_name', $request->supplier);
+    }
+    if ($request->filled('issued_to')) {
+        $query->where('issues.issued_to', $request->issued_to);
     }
 
-    if ($request->filled('item_id')) {
-        $query->where('items.id', $request->item_id);
+    // Transaction type filter (purchase / issue / returns etc.)
+    if ($request->filled('txn_types')) {
+        $types = collect(explode(',', (string)$request->txn_types))
+            ->map(fn($x) => trim($x))
+            ->filter();
+        if ($types->isNotEmpty()) {
+            $query->whereIn('stock_ledger.txn_type', $types->all());
+        }
     }
 
     if ($request->filled('from')) {
         $query->whereDate('stock_ledger.txn_date', '>=', $request->from);
     }
-
     if ($request->filled('to')) {
         $query->whereDate('stock_ledger.txn_date', '<=', $request->to);
     }
@@ -464,16 +508,21 @@ public function csvFullHistory(Request $request)
     $filename = 'full_history_' . now()->format('Ymd_His') . '.csv';
 
     return response()->streamDownload(function () use ($query) {
-
         $out = fopen('php://output', 'w');
 
-        // Header row
+        // UTF-8 BOM for Excel
+        fwrite($out, "\xEF\xBB\xBF");
+
         fputcsv($out, [
             'Date',
             'Type',
             'Group Code',
             'Item Code',
             'Item Name',
+            'Supplier',
+            'Issued To',
+            'Purchase Ref',
+            'Issue Ref',
             'Qty In',
             'Qty Out',
             'Unit Price',
@@ -485,34 +534,34 @@ public function csvFullHistory(Request $request)
 
         $query->chunk(2000, function ($rows) use ($out) {
             foreach ($rows as $r) {
-                $qtyIn  = (float) ($r->qty_in ?? 0);
-                $qtyOut = (float) ($r->qty_out ?? 0);
-                $price  = (float) ($r->unit_price ?? 0);
-
+                $qtyIn  = (float)($r->qty_in ?? 0);
+                $qtyOut = (float)($r->qty_out ?? 0);
+                $price  = (float)($r->unit_price ?? 0);
                 $lineTotal = ($qtyIn > 0 ? $qtyIn : $qtyOut) * $price;
 
                 fputcsv($out, [
-                    $r->txn_date,
-                    $r->txn_type,
-                    $r->group_code,
-                    $r->item_code,
-                    $r->item_name,
+                    (string)$r->txn_date,
+                    (string)$r->txn_type,
+                    (string)$r->group_code,
+                    (string)$r->item_code,
+                    (string)$r->item_name,
+                    (string)($r->supplier_name ?? ''),
+                    (string)($r->issued_to ?? ''),
+                    (string)($r->purchase_ref_no ?? ''),
+                    (string)($r->issue_ref_no ?? ''),
                     $qtyIn ?: '',
                     $qtyOut ?: '',
                     number_format($price, 2, '.', ''),
                     number_format($lineTotal, 2, '.', ''),
-                    $r->ref_table,
-                    $r->ref_id,
-                    $r->notes,
+                    (string)$r->ref_table,
+                    (string)$r->ref_id,
+                    (string)($r->notes ?? ''),
                 ]);
             }
         });
 
         fclose($out);
-
-    }, $filename, [
-        'Content-Type' => 'text/csv; charset=UTF-8',
-    ]);
+    }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
 }
 
 }
