@@ -103,7 +103,6 @@ public function downloadLatest(BackupService $backupService)
 }
 
 
-
     /**
      * Update backup settings from backup screen.
      */
@@ -112,7 +111,7 @@ public function downloadLatest(BackupService $backupService)
         $validated = $request->validate([
             'enabled' => ['nullable', 'boolean'],
             'frequency' => ['required', Rule::in(['daily','weekly'])],
-            'weekly_day' => ['nullable', 'integer', 'min:0', 'max:6'],
+            'weekly_day' => ['nullable', 'integer', 'min:1', 'max:7'],
             'time_hm' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
             // IMPORTANT: we store backups inside storage/app by default.
             // User can customize folder name. This is safe on a local LAN app.

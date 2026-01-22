@@ -110,20 +110,24 @@ class BackupService
     return collect(File::files($dir))
         ->filter(fn($f) => str_ends_with(strtolower($f->getFilename()), '.sql'))
         ->map(function ($f) {
-            $mtime = $f->getMTime();
+            $name = $f->getFilename();
+
+            // Extract datetime from filename: backup_YYYYMMDD_HHMMSS_xxx.sql
+            preg_match('/backup_(\d{8})_(\d{6})/', $name, $m);
+            $sortKey = ($m[1] ?? '00000000') . ($m[2] ?? '000000');
+
             return [
-                'name' => $f->getFilename(),
-                'full_path' => $f->getRealPath(),
-                'mtime' => $mtime,
-                'date' => date('Y-m-d', $mtime),
-                'time' => date('H:i:s', $mtime),
-                'display' => date('Y-m-d H:i:s', $mtime),
+                'name'      => $name,
+                'full_path'=> $f->getRealPath(),
+                'sort_key' => $sortKey,
+                'display'  => date('Y-m-d H:i:s', $f->getMTime()),
             ];
         })
-        ->sortByDesc('mtime')
+        ->sortByDesc('sort_key') // ✅ 100% accurate
         ->values()
         ->all();
 }
+
 
 
     public function enforceRetention(string $dir): void

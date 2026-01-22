@@ -38,9 +38,21 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-semibold text-gray-600 mb-1">Frequency</label>
-                        <select name="frequency" class="w-full rounded-lg border-gray-200">
+                        <select id="backup_frequency" name="frequency" class="w-full rounded-lg border-gray-200">
                             @foreach(['daily'=>'Daily','weekly'=>'Weekly'] as $k=>$v)
                                 <option value="{{ $k }}" {{ ($settings?->frequency ?? 'daily') === $k ? 'selected' : '' }}>{{ $v }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div id="weekly_day_wrap" style="display:none;">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Weekly Day</label>
+                        <select name="weekly_day" class="w-full rounded-lg border-gray-200">
+                            @php
+                                $days = [1=>'Monday',2=>'Tuesday',3=>'Wednesday',4=>'Thursday',5=>'Friday',6=>'Saturday',7=>'Sunday'];
+                                $sel = (int)($settings?->weekly_day ?? 1);
+                            @endphp
+                            @foreach($days as $k=>$v)
+                                <option value="{{ $k }}" {{ $sel === $k ? 'selected' : '' }}>{{ $v }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -124,4 +136,19 @@
     </div>
 
 </div>
+
+<script>
+(function(){
+  const freq = document.getElementById('backup_frequency');
+  const wrap = document.getElementById('weekly_day_wrap');
+  function sync(){
+    if(!freq || !wrap) return;
+    wrap.style.display = (freq.value === 'weekly') ? '' : 'none';
+  }
+  if(freq){
+    freq.addEventListener('change', sync);
+    sync();
+  }
+})();
+</script>
 @endsection
