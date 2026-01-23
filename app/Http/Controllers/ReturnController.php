@@ -13,13 +13,21 @@ use Illuminate\Validation\ValidationException;
 
 class ReturnController extends Controller
 {
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $returns = ReturnTransaction::with('creator')
+        $q = ReturnTransaction::with('creator')
             ->orderByDesc('return_date')
-            ->paginate(15);
+            ->orderByDesc('id');
 
-        return view('returns.index', compact('returns'));
+        // Filter by return type (IN/OUT)
+        $type = strtoupper((string)$request->query('type', ''));
+        if (in_array($type, ['IN', 'OUT'], true)) {
+            $q->where('type', $type);
+        }
+
+        $returns = $q->paginate(15)->appends($request->query());
+
+        return view('returns.index', compact('returns', 'type'));
     }
 
     public function create()

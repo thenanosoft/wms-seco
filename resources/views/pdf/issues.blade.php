@@ -18,6 +18,7 @@
         <thead>
         <tr>
             <th>Date</th>
+            <th>Issued To</th>
             <th>Group</th>
             <th>Item</th>
             <th>Spec</th>
@@ -30,12 +31,13 @@
         @foreach($rows as $r)
             <tr>
                 <td>{{ $r->purchase_date }}</td>
+                <td>{{ $r->issued_to }}</td>
                 <td>{{ $r->group_code }}</td>
                 <td>{{ $r->item_code }} - {{ $r->item_name }}</td>
                 <td>{{ $r->specification }}</td>
                 <td class="right">{{ $r->quantity }}</td>
-                <td class="right">{{ number_format($r->purchase_price, 2) }}</td>
-                <td class="right">{{ number_format($r->line_total, 2) }}</td>
+                <td class="right">{{ number_format($r->purchase_price, 0) }}</td>
+                <td class="right">{{ number_format($r->line_total, 0) }}</td>
             </tr>
         @endforeach
         </tbody>

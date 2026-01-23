@@ -51,7 +51,11 @@ class IssueReturnController extends Controller
 
     public function create(Request $request)
     {
-        $issues = Issue::query()->orderByDesc('issue_date')->limit(500)->get();
+        $issues = Issue::query()
+            ->orderByDesc('issue_date')
+            ->orderByDesc('id')
+            ->limit(500)
+            ->get();
 
         $selectedIssue = null;
         $lines = [];

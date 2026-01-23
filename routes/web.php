@@ -15,29 +15,40 @@ Route::middleware(['auth'])->group(function() {
     ->name('purchases.index')
     ->middleware(['role:admin,store_helper']);
 
-    Route::get('/purchases/items', [\App\Http\Controllers\PurchaseController::class, 'itemsIndex'])
+Route::get('/purchases/items', [\App\Http\Controllers\PurchaseController::class, 'itemsIndex'])
     ->name('purchases.items.index')
     ->middleware(['auth', 'role:admin']);
 
-    Route::get('/purchases/create', [\App\Http\Controllers\PurchaseController::class, 'create'])
+Route::get('/purchases/create', [\App\Http\Controllers\PurchaseController::class, 'create'])
     ->name('purchases.create')
     ->middleware(['role:admin,store_helper']);
 
-    Route::post('/purchases', [\App\Http\Controllers\PurchaseController::class, 'store'])
+Route::post('/purchases', [\App\Http\Controllers\PurchaseController::class, 'store'])
     ->name('purchases.store')
+    ->middleware(['role:admin,store_helper']);
+
+Route::get('/purchases/{purchase}', [\App\Http\Controllers\PurchaseController::class, 'show'])
+    ->name('purchases.show')
+    ->whereNumber('purchase')
     ->middleware(['role:admin,store_helper']);
 
     Route::get('/issues', [\App\Http\Controllers\IssueController::class, 'index'])
     ->name('issues.index')
     ->middleware(['role:admin,store_helper']);
 
-    Route::get('/issues/create', [\App\Http\Controllers\IssueController::class, 'create'])
+Route::get('/issues/create', [\App\Http\Controllers\IssueController::class, 'create'])
     ->name('issues.create')
     ->middleware(['role:admin,store_helper']);
 
-    Route::post('/issues', [\App\Http\Controllers\IssueController::class, 'store'])
+Route::post('/issues', [\App\Http\Controllers\IssueController::class, 'store'])
     ->name('issues.store')
     ->middleware(['role:admin,store_helper']);
+
+Route::get('/issues/{issue}', [\App\Http\Controllers\IssueController::class, 'show'])
+    ->name('issues.show')
+    ->whereNumber('issue')
+    ->middleware(['role:admin,store_helper']);
+
 
     Route::get('/stock', [\App\Http\Controllers\StockController::class, 'index'])
     ->name('stock.index')
@@ -118,11 +129,12 @@ Route::middleware(['auth'])->group(function() {
     Route::get('/items', [\App\Http\Controllers\ItemController::class, 'index'])->name('items.index');
     Route::get('/items/create', [\App\Http\Controllers\ItemController::class, 'create'])->name('items.create');
     Route::post('/items', [\App\Http\Controllers\ItemController::class, 'store'])->name('items.store');
-    Route::get('/items/{item}/edit', [\App\Http\Controllers\ItemController::class, 'edit'])->name('items.edit');
-    Route::put('/items/{item}', [\App\Http\Controllers\ItemController::class, 'update'])->name('items.update');
-    Route::delete('/items/{item}', [\App\Http\Controllers\ItemController::class, 'destroy'])->name('items.destroy');
+    Route::get('/items/{item}/edit', [\App\Http\Controllers\ItemController::class, 'edit'])->name('items.edit')->whereNumber('item');
+    Route::put('/items/{item}', [\App\Http\Controllers\ItemController::class, 'update'])->name('items.update')->whereNumber('item');
+    Route::delete('/items/{item}', [\App\Http\Controllers\ItemController::class, 'destroy'])->name('items.destroy')->whereNumber('item');
     Route::get('/items/{item}/stock', [\App\Http\Controllers\ItemStockController::class, 'show'])
-    ->name('items.stock.show');
+    ->name('items.stock.show')
+    ->whereNumber('item');
 
     // Print views
     Route::get('/print/purchases', [\App\Http\Controllers\ExportController::class, 'printPurchases'])->name('print.purchases');

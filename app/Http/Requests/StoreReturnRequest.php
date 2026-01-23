@@ -22,7 +22,7 @@ class StoreReturnRequest extends FormRequest
 
             'lines' => ['required','array','min:1'],
             'lines.*.item_id' => ['required','exists:items,id'],
-            'lines.*.quantity' => ['required','numeric','min:0.001'],
+            'lines.*.quantity' => ['required','numeric','min:1'],
             'lines.*.unit_price' => ['nullable','numeric','min:0'],
         ];
     }

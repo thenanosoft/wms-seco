@@ -11,6 +11,29 @@
     </div>
 
     <div class="flex flex-wrap gap-2 mb-4">
+    <form method="GET" action="{{ route('returns.index') }}" class="flex flex-wrap items-end gap-2 w-full">
+        <div>
+            <label class="block text-xs text-gray-600">Return Type</label>
+            <select name="type" class="rounded-lg border-gray-200 text-sm">
+                <option value="" {{ ($type ?? '') === '' ? 'selected' : '' }}>All</option>
+                <option value="IN" {{ ($type ?? '') === 'IN' ? 'selected' : '' }}>Inward (Return In)</option>
+                <option value="OUT" {{ ($type ?? '') === 'OUT' ? 'selected' : '' }}>Outward (Return Out)</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs text-gray-600">From</label>
+            <input type="date" name="from" value="{{ $from ?? '' }}" class="rounded-lg border-gray-200 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-600">To</label>
+            <input type="date" name="to" value="{{ $to ?? '' }}" class="rounded-lg border-gray-200 text-sm">
+        </div>
+        <div class="pt-4">
+            <button class="rounded-lg bg-gray-900 px-4 py-2 text-white text-sm">Filter</button>
+            <a href="{{ route('returns.index') }}" class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Reset</a>
+        </div>
+    </form>
+
     <a href="{{ route('print.returns', request()->query()) }}" target="_blank"
        class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Print</a>
 

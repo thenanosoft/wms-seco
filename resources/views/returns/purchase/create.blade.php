@@ -80,18 +80,18 @@
                                     <td class="px-3 py-2">{{ $l['group_code'] }}</td>
                                     <td class="px-3 py-2">{{ $l['item_code'] }} - {{ $l['item_name'] }}</td>
                                     <td class="px-3 py-2">{{ $l['specification'] }}</td>
-                                    <td class="px-3 py-2 text-right">{{ number_format($l['purchased_qty'], 3) }}</td>
-                                    <td class="px-3 py-2 text-right">{{ number_format($l['returned_qty'], 3) }}</td>
-                                    <td class="px-3 py-2 text-right font-semibold">{{ number_format($l['remaining_from_purchase'], 3) }}</td>
-                                    <td class="px-3 py-2 text-right">{{ number_format($l['available_now'], 3) }}</td>
-                                    <td class="px-3 py-2 text-right font-semibold">{{ number_format($l['max_return_qty'], 3) }}</td>
+                                    <td class="px-3 py-2 text-right">{{ number_format($l['purchased_qty'], 0) }}</td>
+                                    <td class="px-3 py-2 text-right">{{ number_format($l['returned_qty'], 0) }}</td>
+                                    <td class="px-3 py-2 text-right font-semibold">{{ number_format($l['remaining_from_purchase'], 0) }}</td>
+                                    <td class="px-3 py-2 text-right">{{ number_format($l['available_now'], 0) }}</td>
+                                    <td class="px-3 py-2 text-right font-semibold">{{ number_format($l['max_return_qty'], 0) }}</td>
                                     <td class="px-3 py-2 text-right">
                                         <input type="hidden" name="lines[{{ $idx }}][purchase_line_id]" value="{{ $l['line_id'] }}">
-                                        <input type="number" step="0.001" min="0" max="{{ $l['max_return_qty'] }}"
+                                        <input type="number" step="1" min="0" max="{{ $l['max_return_qty'] }}"
                                                name="lines[{{ $idx }}][quantity]"
                                                value="{{ old("lines.$idx.quantity", 0) }}"
                                                class="w-28 rounded-lg border-gray-200 text-right">
-                                        <div class="mt-1 text-xs text-gray-500">Max {{ number_format($l['max_return_qty'], 3) }}</div>
+                                        <div class="mt-1 text-xs text-gray-500">Max {{ number_format($l['max_return_qty'], 0) }}</div>
                                     </td>
                                 </tr>
                             @endforeach

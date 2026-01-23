@@ -67,12 +67,14 @@
                         <td class="px-4 py-2">{{ $r->purchase_date }}</td>
                         <td class="px-4 py-2">{{ $r->group_code }}</td>
                         <td class="px-4 py-2">
-                            {{ $r->item_code }} – {{ $r->item_name }}
+                            <a href="{{ route('items.stock.show', $r->item_id) }}" class="text-indigo-600 hover:underline">
+                                {{ $r->item_code }} - {{ $r->item_name }}
+                            </a>
                         </td>
-                        <td class="px-4 py-2 text-right">{{ $r->quantity }}</td>
-                        <td class="px-4 py-2 text-right">{{ number_format($r->purchase_price, 2) }}</td>
+                        <td class="px-4 py-2 text-right">{{ (int)$r->quantity }}</td>
+                        <td class="px-4 py-2 text-right">{{ number_format((float)$r->purchase_price, 0) }}</td>
                         <td class="px-4 py-2 text-right font-semibold">
-                            {{ number_format($r->line_total, 2) }}
+                            {{ number_format((float)$r->line_total, 0) }}
                         </td>
                     </tr>
                 @endforeach

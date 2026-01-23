@@ -15,13 +15,42 @@ class PurchaseController extends Controller
 {
     public function index(Request $request)
     {
-        $purchases = Purchase::query()
+        $q = Purchase::query()
             ->with('creator')
             ->orderByDesc('purchase_date')
-            ->orderByDesc('id')
-            ->paginate(15);
+            ->orderByDesc('id');
 
-        return view('purchase.index', compact('purchases'));
+        // Filters
+        if ($request->filled('from')) {
+            $q->whereDate('purchase_date', '>=', $request->string('from')->toString());
+        }
+        if ($request->filled('to')) {
+            $q->whereDate('purchase_date', '<=', $request->string('to')->toString());
+        }
+        if ($request->filled('supplier')) {
+            $q->where('supplier_name', 'like', '%' . $request->string('supplier')->toString() . '%');
+        }
+        if ($request->filled('ref')) {
+            $q->where('reference_no', 'like', '%' . $request->string('ref')->toString() . '%');
+        }
+
+        $purchases = $q->paginate(15)->appends($request->query());
+
+        $suppliers = Purchase::query()
+            ->whereNotNull('supplier_name')
+            ->where('supplier_name', '!=', '')
+            ->select('supplier_name')
+            ->distinct()
+            ->orderBy('supplier_name')
+            ->pluck('supplier_name');
+
+        return view('purchase.index', compact('purchases', 'suppliers'));
+    }
+
+    public function show(Purchase $purchase)
+    {
+        $purchase->load(['creator', 'lines.item.group']);
+        return view('purchase.show', compact('purchase'));
     }
 
     public function create()
@@ -52,9 +81,9 @@ class PurchaseController extends Controller
             ]);
 
             foreach ($validated['lines'] as $line) {
-                $qty = (float) $line['quantity'];
-                $price = (float) $line['purchase_price'];
-                $total = round($qty * $price, 2);
+                $qty = (int) $line['quantity'];
+                $price = (int) $line['purchase_price'];
+                $total = $qty * $price;
 
                 $purchaseLine = PurchaseLine::create([
                     'purchase_id' => $purchase->id,

@@ -153,7 +153,7 @@
                                 <!-- Price -->
                                 <td class="px-3 py-2">
                                     <input type="number"
-                                           step="0.01"
+                                           step="1"
                                            min="0"
                                            class="w-28 rounded-lg border-gray-200"
                                            :name="`lines[${idx}][unit_price]`"
@@ -164,8 +164,8 @@
                                 <!-- Qty -->
                                 <td class="px-3 py-2">
                                     <input type="number"
-                                           step="0.001"
-                                           min="0.001"
+                                           step="1"
+                                           min="1"
                                            class="w-24 rounded-lg border-gray-200"
                                            :name="`lines[${idx}][quantity]`"
                                            x-model.number="line.quantity"

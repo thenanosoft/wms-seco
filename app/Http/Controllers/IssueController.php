@@ -14,15 +14,35 @@ use Illuminate\Validation\ValidationException;
 
 class IssueController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $issues = Issue::query()
+        $q = Issue::query()
             ->with('creator')
             ->orderByDesc('issue_date')
-            ->orderByDesc('id')
-            ->paginate(15);
+            ->orderByDesc('id');
+
+        if ($request->filled('from')) {
+            $q->whereDate('issue_date', '>=', $request->string('from')->toString());
+        }
+        if ($request->filled('to')) {
+            $q->whereDate('issue_date', '<=', $request->string('to')->toString());
+        }
+        if ($request->filled('issued_to')) {
+            $q->where('issued_to', 'like', '%' . $request->string('issued_to')->toString() . '%');
+        }
+        if ($request->filled('reference')) {
+            $q->where('reference', 'like', '%' . $request->string('reference')->toString() . '%');
+        }
+
+        $issues = $q->paginate(15)->withQueryString();
 
         return view('issue.index', compact('issues'));
+    }
+
+    public function show(Issue $issue)
+    {
+        $issue->load(['creator', 'lines.item.group']);
+        return view('issue.show', compact('issue'));
     }
 
     public function create(\App\Services\StockService $stock)
@@ -86,9 +106,9 @@ class IssueController extends Controller
             ]);
 
             foreach ($validated['lines'] as $line) {
-                $qty = (float) $line['quantity'];
-                $price = (float) ($line['issue_price'] ?? 0);
-                $total = round($qty * $price, 2);
+                $qty = (int) $line['quantity'];
+                $price = (int) ($line['issue_price'] ?? 0);
+                $total = $qty * $price;
 
                 $issueLine = IssueLine::create([
                     'issue_id' => $issue->id,

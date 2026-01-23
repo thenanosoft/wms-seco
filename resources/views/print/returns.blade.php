@@ -42,8 +42,8 @@
                 <td>{{ $r->group_code }}</td>
                 <td>{{ $r->item_code }} - {{ $r->item_name }}</td>
                 <td class="right">{{ $r->quantity }}</td>
-                <td class="right">{{ number_format($r->unit_price, 2) }}</td>
-                <td class="right">{{ number_format($r->line_total, 2) }}</td>
+                <td class="right">{{ number_format($r->unit_price, 0) }}</td>
+                <td class="right">{{ number_format($r->line_total, 0) }}</td>
                 <td>{{ $r->party }}</td>
                 <td>{{ $r->reference_no }}</td>
             </tr>

@@ -22,11 +22,13 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
             <div>
                 <label class="text-sm font-medium">Select Issue</label>
+                <input type="text" id="issueSearch" placeholder="Search by Issue ID, user, reference..." class="mt-1 w-full rounded-lg border-gray-200" autocomplete="off">
                 <select name="issue_id" class="mt-1 w-full rounded-lg border-gray-200" required>
                     <option value="">Select</option>
                     @foreach($issues as $iss)
-                        <option value="{{ $iss->id }}" @selected(request('issue_id') == $iss->id)>
-                            {{ $iss->issue_date }} | {{ $iss->reference_no ?? 'No Ref' }} | {{ $iss->issued_to ?? 'N/A' }}
+                        <option value="{{ $iss->id }}" @selected(request('issue_id') == $iss->id)
+                            data-search="{{ strtolower(''.$iss->id.' '.$iss->issue_date.' '.($iss->reference_no ?? '').' '.($iss->issued_to ?? '')) }}">
+                            #{{ $iss->id }} | {{ $iss->issue_date }} | {{ $iss->reference_no ?? 'No Ref' }} | {{ $iss->issued_to ?? 'N/A' }}
                         </option>
                     @endforeach
                 </select>
@@ -82,16 +84,16 @@
                                     <td class="px-3 py-2">{{ $l['group_code'] }}</td>
                                     <td class="px-3 py-2">{{ $l['item_code'] }} - {{ $l['item_name'] }}</td>
                                     <td class="px-3 py-2">{{ $l['specification'] }}</td>
-                                    <td class="px-3 py-2 text-right">{{ number_format($l['issued_qty'], 3) }}</td>
-                                    <td class="px-3 py-2 text-right">{{ number_format($l['returned_qty'], 3) }}</td>
-                                    <td class="px-3 py-2 text-right font-semibold">{{ number_format($l['remaining_qty'], 3) }}</td>
+                                    <td class="px-3 py-2 text-right">{{ number_format($l['issued_qty'], 0) }}</td>
+                                    <td class="px-3 py-2 text-right">{{ number_format($l['returned_qty'], 0) }}</td>
+                                    <td class="px-3 py-2 text-right font-semibold">{{ number_format($l['remaining_qty'], 0) }}</td>
                                     <td class="px-3 py-2 text-right">
                                         <input type="hidden" name="lines[{{ $idx }}][issue_line_id]" value="{{ $l['line_id'] }}">
-                                        <input type="number" step="0.001" min="0" max="{{ $l['remaining_qty'] }}"
+                                        <input type="number" step="1" min="0" max="{{ $l['remaining_qty'] }}"
                                                name="lines[{{ $idx }}][quantity]"
                                                value="{{ old("lines.$idx.quantity", 0) }}"
                                                class="w-28 rounded-lg border-gray-200 text-right">
-                                        <div class="mt-1 text-xs text-gray-500">Max {{ number_format($l['remaining_qty'], 3) }}</div>
+                                        <div class="mt-1 text-xs text-gray-500">Max {{ number_format($l['remaining_qty'], 0) }}</div>
                                     </td>
                                 </tr>
                             @endforeach
@@ -107,4 +109,42 @@
         </form>
     @endif
 </div>
+
+<script>
+    (function () {
+        const input = document.getElementById('issueSearch');
+        const select = document.querySelector('select[name="issue_id"]');
+        if (!input || !select) return;
+
+        const options = Array.from(select.options);
+        input.addEventListener('input', function () {
+            const q = (this.value || '').trim().toLowerCase();
+            options.forEach(opt => {
+                if (opt.value === '') return;
+                const hay = (opt.getAttribute('data-search') || opt.textContent || '').toLowerCase();
+                opt.hidden = q && !hay.includes(q);
+            });
+        });
+    })();
+</script>
 @endsection
+
+@push('scripts')
+<script>
+(() => {
+    const input = document.getElementById('issueSearch');
+    const select = document.querySelector('select[name="issue_id"]');
+    if (!input || !select) return;
+
+    const options = Array.from(select.options);
+    input.addEventListener('input', () => {
+        const q = (input.value || '').trim().toLowerCase();
+        options.forEach(opt => {
+            if (!opt.value) return;
+            const hay = opt.getAttribute('data-search') || opt.textContent.toLowerCase();
+            opt.hidden = q && !hay.includes(q);
+        });
+    });
+})();
+</script>
+@endpush
