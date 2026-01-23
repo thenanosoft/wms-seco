@@ -40,13 +40,20 @@
 
                         </div>
                     <?php endif; ?>
-
                     <?php echo $__env->yieldContent('content'); ?>
                 </main>
             </div>
 
         </div>
     </div>
+    <footer class="mt-10 border-t text-center bg-white">
+    <div class="max-w text-center px-4 py-3 text-md text-gray-600">
+        <div>
+            © <?php echo e(date('Y')); ?> WMS - Designed by Farhan Ellahi Owned by Nanosoft
+        </div>
+    </div>
+</footer>
+
 </body>
 </html>
 <?php /**PATH /Users/farhanellahi/Development/web/laravel/wms/resources/views/layouts/app.blade.php ENDPATH**/ ?>

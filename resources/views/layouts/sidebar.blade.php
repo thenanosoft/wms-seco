@@ -145,9 +145,18 @@
     </nav>
 
     <div class="border-t border-gray-200 p-4">
-        <div class="text-sm font-medium">{{ auth()->user()->name }}</div>
-        <div class="text-xs text-gray-600">
-            Role: {{ auth()->user()->role }}
-        </div>
+        <a href="{{ route('profile.index') }}" class="block">
+            <div class="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-100 transition-colors bg-gray-200">
+                <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white flex-shrink-0">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                    </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm font-semibold text-gray-900 truncate">{{ auth()->user()->name }}</div>
+                    <div class="text-xs text-gray-500 truncate capitalize">{{ auth()->user()->role }}</div>
+                </div>
+            </div>
+        </a>
     </div>
 </div>

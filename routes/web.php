@@ -171,11 +171,21 @@ Route::get('/issues/{issue}', [\App\Http\Controllers\IssueController::class, 'sh
 //     return view('dashboard');
 // })->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+Route::middleware(['auth','role:admin'])->group(function () {
+    Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'index'])->name('profile.index');
+    Route::post('/profile/update', [\App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
+
+    Route::post('/profile/users', [\App\Http\Controllers\ProfileController::class, 'storeUser'])->name('profile.users.store');
+    Route::post('/profile/users/{user}/reset-password', [\App\Http\Controllers\ProfileController::class, 'resetUserPassword'])->name('profile.users.reset');
+
+    Route::post('/profile/users/{user}/update', [ProfileController::class, 'updateUser'])
+    ->name('profile.users.update');
+
+Route::post('/profile/users/{user}/delete', [ProfileController::class, 'deleteUser'])
+    ->name('profile.users.delete');
+
 });
+
 
 
 require __DIR__.'/auth.php';

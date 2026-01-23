@@ -39,12 +39,19 @@
                             {{ session('status') }}
                         </div>
                     @endif
-
                     @yield('content')
                 </main>
             </div>
 
         </div>
     </div>
+    <footer class="mt-10 border-t text-center bg-white">
+    <div class="max-w text-center px-4 py-3 text-md text-gray-600">
+        <div>
+            © {{ date('Y') }} WMS - Designed by Farhan Ellahi Owned by Nanosoft
+        </div>
+    </div>
+</footer>
+
 </body>
 </html>
