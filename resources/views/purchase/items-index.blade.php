@@ -72,7 +72,13 @@
                             </a>
                         </td>
                         <td class="px-4 py-2 text-right">{{ (int)$r->quantity }}</td>
-                        <td class="px-4 py-2 text-right">{{ number_format((float)$r->purchase_price, 0) }}</td>
+                        <td class="px-4 py-2 text-right">
+                            @if($r->purchase_price === null)
+                                <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">PENDING</span>
+                            @else
+                                {{ number_format((float)$r->purchase_price, 0) }}
+                            @endif
+                        </td>
                         <td class="px-4 py-2 text-right font-semibold">
                             {{ number_format((float)$r->line_total, 0) }}
                         </td>

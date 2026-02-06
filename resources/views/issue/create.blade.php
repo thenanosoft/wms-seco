@@ -70,7 +70,7 @@
                             <th class="px-3 py-2 text-left font-semibold">Group</th>
                             <th class="px-3 py-2 text-left font-semibold">Item</th>
                             <th class="px-3 py-2 text-left font-semibold">Specification</th>
-                            <th class="px-3 py-2 text-left font-semibold">Price</th>
+                            <th class="px-3 py-2 text-left font-semibold">FIFO Price</th>
                             <th class="px-3 py-2 text-left font-semibold">Qty</th>
                             <th class="px-3 py-2 text-left font-semibold">Total</th>
                             <th class="px-3 py-2"></th>
@@ -142,10 +142,12 @@
 
                                 <td class="px-3 py-2">
                                     <input type="number" step="1" min="0"
-                                           class="w-28 rounded-lg border-gray-200"
-                                           :name="`lines[${idx}][issue_price]`"
-                                           x-model.number="line.issue_price"
-                                           @input="recalc(idx)">
+                                           class="w-28 rounded-lg border-gray-200 bg-gray-50"
+                                           x-model.number="line.display_price"
+                                           disabled>
+                                    <div class="mt-1 text-xs text-gray-600">
+                                        Estimated (actual uses FIFO batches)
+                                    </div>
                                 </td>
 
                                 <td class="px-3 py-2">
@@ -230,7 +232,7 @@ function issueForm(groups, items) {
                 show_items: false,
                 filtered_items: [],
                 specification: '',
-                issue_price: 0,
+                display_price: 0,
                 quantity: 1,
                 line_total: 0,
                 available_stock: 0,
@@ -305,8 +307,8 @@ function issueForm(groups, items) {
     line.item_search = line.item_label;
     line.show_items = false;
 
-    // Auto-fill price from last purchase
-    line.issue_price = Number(it.last_price || 0);
+    // Display only: last known price (actual issue price will be taken from FIFO batches)
+    line.display_price = Number(it.last_price || 0);
 
     // Available stock
     line.available_stock = Number(it.available_stock || 0);
@@ -340,7 +342,7 @@ validateQty(idx) {
 },
         recalc(idx) {
             const line = this.lines[idx];
-            const price = Number(line.issue_price || 0);
+            const price = Number(line.display_price || 0);
             const qty = Number(line.quantity || 0);
             line.line_total = Math.round(price * qty * 100) / 100;
             this.recalcAll();

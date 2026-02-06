@@ -2,32 +2,34 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class IssueLine extends Model
+class StockBatch extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'issue_id',
         'purchase_line_id',
+        'purchase_date',
         'item_id',
         'specification',
-        'issue_price',
-        'quantity',
-        'line_total',
+        'qty_purchased',
+        'qty_available',
+        'unit_price',
+    ];
+
+    protected $casts = [
+        'purchase_date' => 'date',
+        'unit_price' => 'integer',
+        'qty_purchased' => 'integer',
+        'qty_available' => 'integer',
     ];
 
     public function purchaseLine(): BelongsTo
     {
         return $this->belongsTo(PurchaseLine::class);
-    }
-
-    public function issue(): BelongsTo
-    {
-        return $this->belongsTo(Issue::class);
     }
 
     public function item(): BelongsTo

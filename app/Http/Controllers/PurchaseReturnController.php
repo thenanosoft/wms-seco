@@ -6,6 +6,7 @@ use App\Models\Purchase;
 use App\Models\PurchaseLine;
 use App\Models\PurchaseReturnLine;
 use App\Models\PurchaseReturnTransaction;
+use App\Models\StockBatch;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -157,6 +158,20 @@ class PurchaseReturnController extends Controller
                     'specification_snapshot' => $purchaseLine->specification,
                     'created_by' => auth()->id(),
                 ]);
+
+                // Decrease availability in the SAME FIFO batch (purchase line).
+                $batch = StockBatch::query()
+                    ->where('purchase_line_id', $purchaseLine->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($batch) {
+                    $batch->qty_available = (int)$batch->qty_available - $qty;
+                    if ($batch->qty_available < 0) {
+                        $batch->qty_available = 0;
+                    }
+                    $batch->save();
+                }
             }
 
             return redirect()->route('returns.purchase.index')->with('status', 'Purchase return saved.');

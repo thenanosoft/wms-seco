@@ -60,6 +60,7 @@
                         <th class="px-4 py-3 text-left font-semibold">Supplier</th>
                         <th class="px-4 py-3 text-left font-semibold">Ref</th>
                         <th class="px-4 py-3 text-left font-semibold">Created By</th>
+                        <th class="px-4 py-3 text-left font-semibold">Pending Prices</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -72,10 +73,19 @@
                             <td class="px-4 py-3">{{ $p->supplier_name ?? '-' }}</td>
                             <td class="px-4 py-3">{{ $p->reference_no ?? '-' }}</td>
                             <td class="px-4 py-3">{{ $p->creator?->name ?? '-' }}</td>
+                            <td class="px-4 py-3">
+                                @if((int)($p->pending_prices_count ?? 0) > 0)
+                                    <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+                                        {{ (int)$p->pending_prices_count }} pending
+                                    </span>
+                                @else
+                                    <span class="text-xs text-gray-500">OK</span>
+                                @endif
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td class="px-4 py-6 text-center text-gray-600" colspan="4">
+                            <td class="px-4 py-6 text-center text-gray-600" colspan="6">
                                 No purchases yet.
                             </td>
                         </tr>

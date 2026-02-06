@@ -8,6 +8,7 @@ use App\Models\Item;
 use App\Models\Issue;
 use App\Models\IssueLine;
 use App\Services\StockService;
+use App\Services\FifoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -76,23 +77,27 @@ class IssueController extends Controller
 }
 
 
-    public function store(StoreIssueRequest $request, StockService $stock)
+    public function store(StoreIssueRequest $request, StockService $stock, FifoService $fifo)
     {
         $validated = $request->validated();
         $userId = $request->user()->id;
 
-        return DB::transaction(function () use ($validated, $userId, $stock) {
-
-            // Stock availability check (audit-safe)
+        return DB::transaction(function () use ($validated, $userId, $stock, $fifo) {
+            // Validate stock and FIFO availability.
             foreach ($validated['lines'] as $i => $line) {
                 $itemId = (int) $line['item_id'];
                 $qty = (int) $line['quantity'];
 
-                $available = $stock->getAvailableStock($itemId);
-
+                $available = (int) $stock->getAvailableStock($itemId);
                 if ($qty > $available) {
                     throw ValidationException::withMessages([
                         "lines.$i.quantity" => "Not enough stock. Available: {$available}",
+                    ]);
+                }
+
+                if (empty($fifo->allocateBatchesForIssue($itemId, $qty))) {
+                    throw ValidationException::withMessages([
+                        "lines.$i.quantity" => "Not enough FIFO batches available for this item.",
                     ]);
                 }
             }
@@ -105,35 +110,54 @@ class IssueController extends Controller
                 'created_by' => $userId,
             ]);
 
+            // IMPORTANT: create IssueLine rows per FIFO batch allocation.
             foreach ($validated['lines'] as $line) {
-                $qty = (int) $line['quantity'];
-                $price = (int) ($line['issue_price'] ?? 0);
-                $total = $qty * $price;
+                $itemId = (int) $line['item_id'];
+                $qtyNeeded = (int) $line['quantity'];
 
-                $issueLine = IssueLine::create([
-                    'issue_id' => $issue->id,
-                    'item_id' => $line['item_id'],
-                    'specification' => $line['specification'] ?? null,
-                    'issue_price' => $price,
-                    'quantity' => $qty,
-                    'line_total' => $total,
-                ]);
+                $allocations = $fifo->allocateBatchesForIssue($itemId, $qtyNeeded);
+                if (empty($allocations)) {
+                    throw ValidationException::withMessages(['lines' => 'Not enough FIFO stock available.']);
+                }
 
-                $stock->addIssueLedgerEntry([
-                    'txn_date' => $issue->issue_date,
-                    'ref_id' => $issue->id,
-                    'ref_line_id' => $issueLine->id,
-                    'item_id' => (int) $line['item_id'],
-                    'qty_out' => $qty,
-                    'unit_price' => $price,
-                    'specification_snapshot' => $line['specification'] ?? null,
-                    'created_by' => $userId,
-                ]);
+                foreach ($allocations as $a) {
+                    /** @var \App\Models\StockBatch $batch */
+                    $batch = $a['batch'];
+                    $takeQty = (int) $a['qty'];
+
+                    $batch->qty_available = (int) $batch->qty_available - $takeQty;
+                    if ($batch->qty_available < 0) {
+                        throw ValidationException::withMessages(['lines' => 'Batch stock became negative.']);
+                    }
+                    $batch->save();
+
+                    $price = $batch->unit_price !== null ? (int) $batch->unit_price : 0; // 0 = pending price
+                    $total = $takeQty * $price;
+
+                    $issueLine = IssueLine::create([
+                        'issue_id' => $issue->id,
+                        'purchase_line_id' => $batch->purchase_line_id,
+                        'item_id' => $itemId,
+                        'specification' => $line['specification'] ?? $batch->specification,
+                        'issue_price' => $price,
+                        'quantity' => $takeQty,
+                        'line_total' => $total,
+                    ]);
+
+                    $stock->addIssueLedgerEntry([
+                        'txn_date' => $issue->issue_date,
+                        'ref_id' => $issue->id,
+                        'ref_line_id' => $issueLine->id,
+                        'item_id' => $itemId,
+                        'qty_out' => $takeQty,
+                        'unit_price' => $price,
+                        'specification_snapshot' => $issueLine->specification,
+                        'created_by' => $userId,
+                    ]);
+                }
             }
 
-            return redirect()
-                ->route('issues.index')
-                ->with('status', 'Issue saved successfully.');
+            return redirect()->route('issues.index')->with('status', 'Issue saved successfully.');
         });
     }
 }

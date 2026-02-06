@@ -155,9 +155,12 @@
                                     <input type="number" step="1" min="0"
                                            class="w-28 rounded-lg border-gray-200"
                                            :name="`lines[${idx}][purchase_price]`"
-                                           x-model.number="line.purchase_price"
+                                           x-model="line.purchase_price"
                                            @input="recalc(idx)"
-                                           required>
+                                           placeholder="Pending">
+                                    <div class="mt-1 text-xs text-gray-600">
+                                        Leave empty if supplier invoice price is pending
+                                    </div>
                                 </td>
 
                                 <td class="px-3 py-2">
@@ -234,7 +237,7 @@
                 show_items: false,
                 filtered_items: [],
                 specification: '',
-                purchase_price: 0,
+                purchase_price: '',
                 quantity: 1,
                 line_total: 0
             });

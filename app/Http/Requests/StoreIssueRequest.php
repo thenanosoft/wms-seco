@@ -23,7 +23,6 @@ class StoreIssueRequest extends FormRequest
             'lines.*.group_id' => ['required', 'integer', 'exists:groups,id'],
             'lines.*.item_id' => ['required', 'integer', 'exists:items,id'],
             'lines.*.specification' => ['nullable', 'string', 'max:2000'],
-            'lines.*.issue_price' => ['nullable', 'numeric', 'min:0'],
             'lines.*.quantity' => ['required', 'integer', 'min:1'],
         ];
     }

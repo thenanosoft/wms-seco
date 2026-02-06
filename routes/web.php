@@ -32,6 +32,21 @@ Route::get('/purchases/{purchase}', [\App\Http\Controllers\PurchaseController::c
     ->whereNumber('purchase')
     ->middleware(['role:admin,store_helper']);
 
+Route::get('/purchases/{purchase}/edit', [\App\Http\Controllers\PurchaseController::class, 'edit'])
+    ->name('purchases.edit')
+    ->whereNumber('purchase')
+    ->middleware(['role:admin']);
+
+Route::put('/purchases/{purchase}', [\App\Http\Controllers\PurchaseController::class, 'update'])
+    ->name('purchases.update')
+    ->whereNumber('purchase')
+    ->middleware(['role:admin']);
+
+Route::delete('/purchases/{purchase}', [\App\Http\Controllers\PurchaseController::class, 'destroy'])
+    ->name('purchases.destroy')
+    ->whereNumber('purchase')
+    ->middleware(['role:admin']);
+
     Route::get('/issues', [\App\Http\Controllers\IssueController::class, 'index'])
     ->name('issues.index')
     ->middleware(['role:admin,store_helper']);

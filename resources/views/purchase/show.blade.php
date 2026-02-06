@@ -7,7 +7,15 @@
             <h1 class="text-2xl font-semibold">Purchase Details</h1>
             <p class="text-sm text-gray-600">Purchase #{{ $purchase->id }} · {{ optional($purchase->purchase_date)->format('Y-m-d') }}</p>
         </div>
-        <a href="{{ route('purchases.index') }}" class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Back</a>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('purchases.edit', $purchase) }}" class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">Edit</a>
+            <form method="POST" action="{{ route('purchases.destroy', $purchase) }}" onsubmit="return confirm('Delete this purchase? This is only allowed when nothing is issued from it.');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="rounded-lg border border-red-200 px-4 py-2 text-sm text-red-700 hover:bg-red-50">Delete</button>
+            </form>
+            <a href="{{ route('purchases.index') }}" class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Back</a>
+        </div>
     </div>
 
     <div class="flex flex-wrap gap-2 mb-4">
@@ -24,7 +32,7 @@
     <div class="rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
             <div><span class="text-gray-500">Supplier</span><div class="font-medium">{{ $purchase->supplier_name ?: '-' }}</div></div>
-            <div><span class="text-gray-500">Reference</span><div class="font-medium">{{ $purchase->reference ?: '-' }}</div></div>
+            <div><span class="text-gray-500">Reference</span><div class="font-medium">{{ $purchase->reference_no ?: '-' }}</div></div>
             <div><span class="text-gray-500">Created By</span><div class="font-medium">{{ optional($purchase->creator)->name ?: '-' }}</div></div>
         </div>
     </div>
@@ -52,9 +60,15 @@
                             </a>
                         </td>
                         <td class="px-4 py-2 text-right">{{ (int) $line->quantity }}</td>
-                        <td class="px-4 py-2 text-right">{{ number_format((float) $line->purchase_price, 0) }}</td>
+                        <td class="px-4 py-2 text-right">
+                            @if($line->purchase_price === null)
+                                <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">PRICE PENDING</span>
+                            @else
+                                {{ number_format((float) $line->purchase_price, 0) }}
+                            @endif
+                        </td>
                         <td class="px-4 py-2 text-right">{{ $line->specification ?: '' }}</td>
-                        <td class="px-4 py-2 text-right">{{ number_format((float) $line->line_total, 0) }}</td>
+                        <td class="px-4 py-2 text-right">{{ number_format((float) ($line->line_total ?? 0), 0) }}</td>
                     </tr>
                 @endforeach
             </tbody>

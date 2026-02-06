@@ -6,6 +6,7 @@ use App\Models\Issue;
 use App\Models\IssueLine;
 use App\Models\IssueReturnLine;
 use App\Models\IssueReturnTransaction;
+use App\Models\StockBatch;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -152,6 +153,22 @@ class IssueReturnController extends Controller
                     'specification_snapshot' => $issueLine->specification,
                     'created_by' => auth()->id(),
                 ]);
+
+                // Restore stock back to the SAME FIFO batch it was issued from.
+                if ($issueLine->purchase_line_id) {
+                    $batch = StockBatch::query()
+                        ->where('purchase_line_id', $issueLine->purchase_line_id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($batch) {
+                        $batch->qty_available = (int)$batch->qty_available + $qty;
+                        if ($batch->qty_available > $batch->qty_purchased) {
+                            $batch->qty_available = $batch->qty_purchased;
+                        }
+                        $batch->save();
+                    }
+                }
             }
 
             return redirect()->route('returns.issue.index')->with('status', 'Issue return saved.');
