@@ -26,10 +26,11 @@ return new class extends Migration {
 
             $table->foreignId('item_id')->constrained('items');
 
-            $table->decimal('qty_in', 15, 3)->default(0);
-            $table->decimal('qty_out', 15, 3)->default(0);
+            // Business rule: integer quantities and prices
+            $table->unsignedInteger('qty_in')->default(0);
+            $table->unsignedInteger('qty_out')->default(0);
 
-            $table->decimal('unit_price', 15, 2)->default(0);
+            $table->unsignedInteger('unit_price')->default(0);
             $table->text('specification_snapshot')->nullable();
 
             $table->foreignId('created_by')->constrained('users');

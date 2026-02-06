@@ -15,6 +15,17 @@
            class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Back</a>
     </div>
 
+    <div class="flex flex-wrap gap-2 mb-4">
+        <a href="{{ route('print.item.ledger', $item->id) }}" target="_blank"
+        class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Print</a>
+
+        <a href="{{ route('export.ledger.csv', ['item_id' => $item->id]) }}"
+        class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Export CSV</a>
+
+        <a href="{{ route('export.item.ledger.pdf', $item->id) }}"
+        class="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800">Export PDF</a>
+    </div>
+
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="rounded-xl border bg-white p-4">
             <div class="text-sm text-gray-600">Available</div>

@@ -12,9 +12,10 @@ return new class extends Migration {
             $table->foreignId('issue_id')->constrained('issues')->cascadeOnDelete();
             $table->foreignId('item_id')->constrained('items');
             $table->text('specification')->nullable();
-            $table->decimal('issue_price', 15, 2)->default(0);
-            $table->decimal('quantity', 15, 3);
-            $table->decimal('line_total', 15, 2)->default(0);
+            // Business rule: prices & quantities are integers only
+            $table->unsignedInteger('issue_price')->default(0);
+            $table->unsignedInteger('quantity');
+            $table->unsignedBigInteger('line_total')->default(0);
             $table->timestamps();
 
             $table->index('item_id');

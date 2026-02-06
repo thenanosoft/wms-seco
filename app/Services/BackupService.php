@@ -20,7 +20,25 @@ class BackupService
     public function backupDir(?BackupSetting $setting = null): string
     {
         $dir = trim((string)($setting?->backup_path ?? ''), " \t\n\r\0\x0B/");
-        if ($dir === '') $dir = self::DEFAULT_DIR;
+        if ($dir === '') {
+            $dir = self::DEFAULT_DIR;
+        }
+
+        // Security: prevent path traversal and Windows drive/UNC paths.
+        // Allowed: folder names and subfolders like "wms_backups" or "wms_backups/daily".
+        $dir = str_replace('\\', '/', $dir);
+        $isUnsafe =
+            str_contains($dir, '..') ||
+            str_starts_with($dir, '/') ||
+            str_starts_with($dir, '.') ||
+            preg_match('/^[A-Za-z]:\//', $dir) ||
+            str_starts_with($dir, '//') ||
+            !preg_match('/^[A-Za-z0-9_\-\/]+$/', $dir);
+
+        if ($isUnsafe) {
+            $dir = self::DEFAULT_DIR;
+        }
+
         return storage_path('app/' . $dir);
     }
 

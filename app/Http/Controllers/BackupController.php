@@ -140,7 +140,8 @@ public function downloadLatest(BackupService $backupService)
     {
         $request->validate([
             'sql_file' => ['nullable', 'file', 'mimetypes:text/plain,application/sql,application/octet-stream', 'max:51200'],
-            'selected_backup' => ['nullable', 'string', 'max:255'],
+            // Security: file name only, no path segments
+            'selected_backup' => ['nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9._-]+\.sql$/'],
         ]);
 
         $settings = BackupSetting::query()->latest('id')->first();
@@ -162,7 +163,11 @@ public function downloadLatest(BackupService $backupService)
             }
 
             if ($request->filled('selected_backup')) {
-                $full = $backupService->resolveBackupFullPath($settings, $request->string('selected_backup')->toString());
+                $name = $request->string('selected_backup')->toString();
+                if (!str_ends_with(strtolower($name), '.sql')) {
+                    return back()->withErrors(['restore' => 'Invalid backup file selected.']);
+                }
+                $full = $backupService->resolveBackupFullPath($settings, $name);
                 $backupService->restoreFromSqlFile($full);
                 return back()->with('success', 'Database restored successfully.');
             }

@@ -54,4 +54,13 @@
 </footer>
 
 </body>
+<script>
+document.addEventListener('visibilitychange', function () {
+  if (!document.hidden) {
+    // when user comes back to tab, refresh
+    window.location.reload();
+  }
+});
+</script>
+
 </html>

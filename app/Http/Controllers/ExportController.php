@@ -32,6 +32,7 @@ class ExportController extends Controller
     }
     private function purchasesQuery(Request $request)
     {
+
         $q = PurchaseLine::query()
             ->select([
                 'purchase_lines.*',
@@ -53,7 +54,7 @@ class ExportController extends Controller
         if ($request->filled('item_id')) $q->where('items.id', $request->item_id);
         if ($request->filled('from')) $q->whereDate('purchases.purchase_date', '>=', $request->from);
         if ($request->filled('to')) $q->whereDate('purchases.purchase_date', '<=', $request->to);
-
+        if ($request->filled('purchase_id')) $q->where('purchases.id', (int)$request->purchase_id);
         return $q;
     }
 
@@ -80,7 +81,7 @@ class ExportController extends Controller
         if ($request->filled('item_id')) $q->where('items.id', $request->item_id);
         if ($request->filled('from')) $q->whereDate('issues.issue_date', '>=', $request->from);
         if ($request->filled('to')) $q->whereDate('issues.issue_date', '<=', $request->to);
-
+        if ($request->filled('issue_id')) $q->where('issues.id', (int)$request->issue_id);
         return $q;
     }
 
@@ -335,7 +336,8 @@ class ExportController extends Controller
                 'issue_return_transactions.notes',
                 'issue_return_transactions.created_by',
                 'issue_return_lines.quantity',
-                'issue_return_lines.unit_price',
+                // Column name in DB is issue_price
+                'issue_return_lines.issue_price as unit_price',
                 'groups.group_code',
                 'items.item_code',
                 'items.name as item_name',
@@ -384,7 +386,8 @@ class ExportController extends Controller
                 'purchase_return_transactions.notes',
                 'purchase_return_transactions.created_by',
                 'purchase_return_lines.quantity',
-                'purchase_return_lines.unit_price',
+                // Column name in DB is purchase_price
+                'purchase_return_lines.purchase_price as unit_price',
                 'groups.group_code',
                 'items.item_code',
                 'items.name as item_name',
@@ -423,6 +426,39 @@ class ExportController extends Controller
             }
         );
     }
+
+    public function printItemLedger(int $itemId)
+{
+    $rows = StockLedger::query()
+        ->with(['item.group'])
+        ->where('item_id', $itemId)
+        ->orderBy('txn_date')
+        ->orderBy('id')
+        ->get();
+
+    return view('print.item_ledger', compact('rows'));
+}
+
+public function pdfItemLedger(int $itemId)
+{
+    $rows = StockLedger::query()
+        ->with(['item.group'])
+        ->where('item_id', $itemId)
+        ->orderBy('txn_date')
+        ->orderBy('id')
+        ->get();
+
+    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+        'pdf.item_ledger',
+        compact('rows')
+    )->setPaper('a4', 'landscape');
+
+    return $pdf->download(
+        'item_ledger_' . $itemId . '_' . now()->format('Ymd_His') . '.pdf'
+    );
+}
+
+
 
 public function csvFullHistory(Request $request)
 {

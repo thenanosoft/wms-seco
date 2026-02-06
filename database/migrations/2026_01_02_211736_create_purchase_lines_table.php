@@ -12,9 +12,11 @@ return new class extends Migration {
             $table->foreignId('purchase_id')->constrained('purchases')->cascadeOnDelete();
             $table->foreignId('item_id')->constrained('items');
             $table->text('specification')->nullable();
-            $table->decimal('purchase_price', 15, 2);
-            $table->decimal('quantity', 15, 3);
-            $table->decimal('line_total', 15, 2);
+            // Business rule: prices & quantities are stored as integers
+            // (e.g., PKR as whole currency; qty as whole units).
+            $table->unsignedInteger('purchase_price');
+            $table->unsignedInteger('quantity');
+            $table->unsignedBigInteger('line_total');
             $table->timestamps();
 
             $table->index('item_id');

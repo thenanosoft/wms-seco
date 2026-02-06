@@ -19,7 +19,12 @@ public function down(): void
         $table->enum('txn_type', [
             'PURCHASE',
             'ISSUE',
-            'ISSUE_RETURN_IN'
+            'ISSUE_RETURN_IN',
+            'PURCHASE_RETURN_OUT',
+            'RETURN_IN',
+            'RETURN_OUT',
+            'ADJUSTMENT',
+            'OPENING'
         ])->change();
     });
 }

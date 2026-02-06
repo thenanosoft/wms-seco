@@ -62,9 +62,9 @@ class PurchaseReturnController extends Controller
                 $stockSvc = app(StockService::class);
 
                 $lines = $selectedPurchase->lines->map(function (PurchaseLine $line) use ($stockSvc) {
-                    $returned = (float) PurchaseReturnLine::query()->where('purchase_line_id', $line->id)->sum('quantity');
-                    $remainingFromPurchase = max(0, (float)$line->quantity - $returned);
-                    $availableNow = (float) $stockSvc->getAvailableStock($line->item_id);
+                    $returned = (int) PurchaseReturnLine::query()->where('purchase_line_id', $line->id)->sum('quantity');
+                    $remainingFromPurchase = max(0, (int)$line->quantity - $returned);
+                    $availableNow = (int) $stockSvc->getAvailableStock($line->item_id);
                     $maxReturn = max(0, min($remainingFromPurchase, $availableNow));
 
                     return [
@@ -73,8 +73,8 @@ class PurchaseReturnController extends Controller
                         'item_code' => $line->item->item_code,
                         'item_name' => $line->item->name,
                         'specification' => $line->specification,
-                        'purchase_price' => (float)$line->purchase_price,
-                        'purchased_qty' => (float)$line->quantity,
+                        'purchase_price' => (int)$line->purchase_price,
+                        'purchased_qty' => (int)$line->quantity,
                         'returned_qty' => $returned,
                         'remaining_from_purchase' => $remainingFromPurchase,
                         'available_now' => $availableNow,
@@ -95,8 +95,15 @@ class PurchaseReturnController extends Controller
             'notes' => ['nullable','string','max:255'],
             'lines' => ['required','array','min:1'],
             'lines.*.purchase_line_id' => ['required','integer','exists:purchase_lines,id'],
-            'lines.*.quantity' => ['required','numeric','min:0.001'],
+            // Business rule: integers only (no decimals). 0 means "skip this line".
+            'lines.*.quantity' => ['required','integer','min:0'],
         ]);
+
+        // Must return at least 1 item qty.
+        $hasQty = collect($data['lines'] ?? [])->contains(fn($r) => ((int)($r['quantity'] ?? 0)) > 0);
+        if (!$hasQty) {
+            return back()->withErrors(['lines' => 'Please enter at least 1 return quantity.'])->withInput();
+        }
 
         $purchase = Purchase::query()->with(['lines.item'])->findOrFail($data['purchase_id']);
         $purchaseLinesById = $purchase->lines->keyBy('id');
@@ -111,7 +118,7 @@ class PurchaseReturnController extends Controller
 
             foreach ($data['lines'] as $row) {
                 $lineId = (int)$row['purchase_line_id'];
-                $qty = (float)$row['quantity'];
+                $qty = (int)$row['quantity'];
                 if ($qty <= 0) continue;
 
                 /** @var PurchaseLine|null $purchaseLine */
@@ -120,16 +127,16 @@ class PurchaseReturnController extends Controller
                     abort(422, 'Invalid purchase line selected.');
                 }
 
-                $alreadyReturned = (float) PurchaseReturnLine::query()->where('purchase_line_id', $purchaseLine->id)->sum('quantity');
-                $remainingFromPurchase = max(0, (float)$purchaseLine->quantity - $alreadyReturned);
-                $availableNow = (float) $stock->getAvailableStock($purchaseLine->item_id);
+                $alreadyReturned = (int) PurchaseReturnLine::query()->where('purchase_line_id', $purchaseLine->id)->sum('quantity');
+                $remainingFromPurchase = max(0, (int)$purchaseLine->quantity - $alreadyReturned);
+                $availableNow = (int) $stock->getAvailableStock($purchaseLine->item_id);
                 $maxReturn = max(0, min($remainingFromPurchase, $availableNow));
 
-                if ($qty > $maxReturn + 0.00001) {
+                if ($qty > $maxReturn) {
                     abort(422, "Return qty cannot exceed allowed return qty (Max: {$maxReturn}).");
                 }
 
-                $lineTotal = round(((float)$purchaseLine->purchase_price) * $qty, 2);
+                $lineTotal = ((int)$purchaseLine->purchase_price) * $qty;
                 $rLine = PurchaseReturnLine::create([
                     'purchase_return_transaction_id' => $tx->id,
                     'purchase_line_id' => $purchaseLine->id,
@@ -146,7 +153,7 @@ class PurchaseReturnController extends Controller
                     'ref_line_id' => $rLine->id,
                     'item_id' => $purchaseLine->item_id,
                     'qty_out' => $qty,
-                    'unit_price' => $purchaseLine->purchase_price,
+                    'unit_price' => (int)$purchaseLine->purchase_price,
                     'specification_snapshot' => $purchaseLine->specification,
                     'created_by' => auth()->id(),
                 ]);

@@ -64,16 +64,16 @@ class IssueReturnController extends Controller
             $selectedIssue = Issue::query()->with(['lines.item.group'])->find($request->issue_id);
             if ($selectedIssue) {
                 $lines = $selectedIssue->lines->map(function (IssueLine $line) {
-                    $returned = (float) IssueReturnLine::query()->where('issue_line_id', $line->id)->sum('quantity');
-                    $remaining = max(0, (float)$line->quantity - $returned);
+                    $returned = (int) IssueReturnLine::query()->where('issue_line_id', $line->id)->sum('quantity');
+                    $remaining = max(0, (int)$line->quantity - $returned);
                     return [
                         'line_id' => $line->id,
                         'group_code' => $line->item->group->group_code,
                         'item_code' => $line->item->item_code,
                         'item_name' => $line->item->name,
                         'specification' => $line->specification,
-                        'issue_price' => (float)$line->issue_price,
-                        'issued_qty' => (float)$line->quantity,
+                        'issue_price' => (int)$line->issue_price,
+                        'issued_qty' => (int)$line->quantity,
                         'returned_qty' => $returned,
                         'remaining_qty' => $remaining,
                     ];
@@ -92,8 +92,15 @@ class IssueReturnController extends Controller
             'notes' => ['nullable','string','max:255'],
             'lines' => ['required','array','min:1'],
             'lines.*.issue_line_id' => ['required','integer','exists:issue_lines,id'],
-            'lines.*.quantity' => ['required','numeric','min:0.001'],
+            // Business rule: integers only (no decimals). 0 means "skip this line".
+            'lines.*.quantity' => ['required','integer','min:0'],
         ]);
+
+        // Must return at least 1 item qty.
+        $hasQty = collect($data['lines'] ?? [])->contains(fn($r) => ((int)($r['quantity'] ?? 0)) > 0);
+        if (!$hasQty) {
+            return back()->withErrors(['lines' => 'Please enter at least 1 return quantity.'])->withInput();
+        }
 
         $issue = Issue::query()->with(['lines.item'])->findOrFail($data['issue_id']);
         $issueLinesById = $issue->lines->keyBy('id');
@@ -108,7 +115,7 @@ class IssueReturnController extends Controller
 
             foreach ($data['lines'] as $row) {
                 $lineId = (int)$row['issue_line_id'];
-                $qty = (float)$row['quantity'];
+                $qty = (int)$row['quantity'];
                 if ($qty <= 0) continue;
 
                 /** @var IssueLine|null $issueLine */
@@ -117,14 +124,14 @@ class IssueReturnController extends Controller
                     abort(422, 'Invalid issue line selected.');
                 }
 
-                $alreadyReturned = (float) IssueReturnLine::query()->where('issue_line_id', $issueLine->id)->sum('quantity');
-                $remaining = max(0, (float)$issueLine->quantity - $alreadyReturned);
+                $alreadyReturned = (int) IssueReturnLine::query()->where('issue_line_id', $issueLine->id)->sum('quantity');
+                $remaining = max(0, (int)$issueLine->quantity - $alreadyReturned);
 
-                if ($qty > $remaining + 0.00001) {
+                if ($qty > $remaining) {
                     abort(422, "Return qty cannot exceed remaining issued qty (Remaining: {$remaining}).");
                 }
 
-                $lineTotal = round(((float)$issueLine->issue_price) * $qty, 2);
+                $lineTotal = ((int)$issueLine->issue_price) * $qty;
                 $rLine = IssueReturnLine::create([
                     'issue_return_transaction_id' => $tx->id,
                     'issue_line_id' => $issueLine->id,
@@ -141,7 +148,7 @@ class IssueReturnController extends Controller
                     'ref_line_id' => $rLine->id,
                     'item_id' => $issueLine->item_id,
                     'qty_in' => $qty,
-                    'unit_price' => $issueLine->issue_price,
+                    'unit_price' => (int)$issueLine->issue_price,
                     'specification_snapshot' => $issueLine->specification,
                     'created_by' => auth()->id(),
                 ]);

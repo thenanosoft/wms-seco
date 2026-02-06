@@ -39,6 +39,17 @@
         </div>
     </form>
 
+    <div class="flex flex-wrap gap-2 mb-4">
+        <a href="{{ route('print.purchases', request()->query()) }}" target="_blank"
+        class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Print</a>
+
+        <a href="{{ route('export.purchases.csv', request()->query()) }}"
+        class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Export CSV</a>
+
+        <a href="{{ route('export.purchases.pdf', request()->query()) }}"
+        class="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800">Export PDF</a>
+    </div>
+
     <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">

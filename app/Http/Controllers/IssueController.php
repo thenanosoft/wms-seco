@@ -86,7 +86,7 @@ class IssueController extends Controller
             // Stock availability check (audit-safe)
             foreach ($validated['lines'] as $i => $line) {
                 $itemId = (int) $line['item_id'];
-                $qty = (float) $line['quantity'];
+                $qty = (int) $line['quantity'];
 
                 $available = $stock->getAvailableStock($itemId);
 

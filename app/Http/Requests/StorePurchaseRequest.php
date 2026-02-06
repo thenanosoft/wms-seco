@@ -23,8 +23,9 @@ class StorePurchaseRequest extends FormRequest
             'lines.*.group_id' => ['required', 'integer', 'exists:groups,id'],
             'lines.*.item_id' => ['required', 'integer', 'exists:items,id'],
             'lines.*.specification' => ['nullable', 'string', 'max:2000'],
-            'lines.*.purchase_price' => ['required', 'numeric', 'min:0'],
-            'lines.*.quantity' => ['required', 'integer', 'min:0.1'],
+            // Business rule: quantities & prices are integers only (no decimals)
+            'lines.*.purchase_price' => ['required', 'integer', 'min:0'],
+            'lines.*.quantity' => ['required', 'integer', 'min:1'],
         ];
     }
 

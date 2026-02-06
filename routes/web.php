@@ -158,6 +158,11 @@ Route::get('/issues/{issue}', [\App\Http\Controllers\IssueController::class, 'sh
     Route::get('/export/stock.pdf', [\App\Http\Controllers\ExportController::class, 'pdfStock'])->name('export.stock.pdf');
     Route::get('/export/issue-returns.pdf', [\App\Http\Controllers\ExportController::class, 'pdfIssueReturns'])->name('export.issue_returns.pdf');
     Route::get('/export/purchase-returns.pdf', [\App\Http\Controllers\ExportController::class, 'pdfPurchaseReturns'])->name('export.purchase_returns.pdf');
+
+    Route::get('/print/item-ledger/{item}', [\App\Http\Controllers\ExportController::class, 'printItemLedger'])->name('print.item.ledger');
+Route::get('/export/item-ledger/{item}.pdf', [\App\Http\Controllers\ExportController::class, 'pdfItemLedger'])->name('export.item.ledger.pdf');
+
+    
 });
 
 

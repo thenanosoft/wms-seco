@@ -76,15 +76,18 @@ class StockService
     }
 
 
-    public function getAvailableStock(int $itemId): float
+    /**
+     * Business rule: quantities are integers only.
+     */
+    public function getAvailableStock(int $itemId): int
     {
         $row = StockLedger::query()
             ->selectRaw('COALESCE(SUM(qty_in),0) as qty_in_sum, COALESCE(SUM(qty_out),0) as qty_out_sum')
             ->where('item_id', $itemId)
             ->first();
 
-        $in = (float) ($row->qty_in_sum ?? 0);
-        $out = (float) ($row->qty_out_sum ?? 0);
+        $in = (int) ($row->qty_in_sum ?? 0);
+        $out = (int) ($row->qty_out_sum ?? 0);
 
         return $in - $out;
     }
@@ -139,8 +142,8 @@ public function getAvailableStockDetailed(int $itemId): array
         ->where('item_id', $itemId)
         ->first();
 
-    $in = (float) ($row->qty_in_sum ?? 0);
-    $out = (float) ($row->qty_out_sum ?? 0);
+    $in = (int) ($row->qty_in_sum ?? 0);
+    $out = (int) ($row->qty_out_sum ?? 0);
 
     return [
         'available' => $in - $out,
