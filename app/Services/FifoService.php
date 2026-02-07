@@ -124,7 +124,8 @@ class FifoService
                 $irl->save();
 
                 StockLedger::query()
-                    ->where('ref_table', 'issue_returns')
+                    // Ledger ref_table used by StockService::addIssueReturnInLedgerEntry()
+                    ->where('ref_table', 'issue_return_transactions')
                     ->where('ref_line_id', $irl->id)
                     ->update(['unit_price' => $newUnitPrice]);
             }
@@ -140,7 +141,8 @@ class FifoService
                 $prl->save();
 
                 StockLedger::query()
-                    ->where('ref_table', 'purchase_returns')
+                    // Ledger ref_table used by StockService::addPurchaseReturnOutLedgerEntry()
+                    ->where('ref_table', 'purchase_return_transactions')
                     ->where('ref_line_id', $prl->id)
                     ->update(['unit_price' => $newUnitPrice]);
             }

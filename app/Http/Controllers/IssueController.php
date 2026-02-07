@@ -33,7 +33,35 @@ class IssueController extends Controller
     public function create()
     {
         $groups = Group::query()->orderBy('group_code')->get();
-        $items = Item::query()->orderBy('item_code')->get();
+        // IMPORTANT: Issue screen needs live available stock + the NEXT FIFO batch price for display.
+        // Actual issuing is still done by FIFO in StockService::issueItemFIFO().
+        // We compute availability from stock_batches.qty_available (source of truth).
+
+        $availableStockSub = StockBatch::query()
+            ->selectRaw('COALESCE(SUM(qty_available),0)')
+            ->whereColumn('stock_batches.item_id', 'items.id');
+
+        $nextBatchPriceSub = StockBatch::query()
+            ->select('unit_price')
+            ->whereColumn('stock_batches.item_id', 'items.id')
+            ->where('qty_available', '>', 0)
+            ->orderBy('purchase_date')
+            ->orderBy('id')
+            ->limit(1);
+
+        $items = Item::query()
+            ->select('items.*')
+            ->selectSub($availableStockSub, 'available_stock')
+            ->selectSub($nextBatchPriceSub, 'fifo_next_price')
+            ->orderBy('items.item_code')
+            ->get()
+            ->map(function ($it) {
+                $it->available_stock = (int)($it->available_stock ?? 0);
+                $it->fifo_price_pending = $it->fifo_next_price === null;
+                // keep as numeric for JS calculations
+                $it->fifo_next_price = $it->fifo_next_price === null ? 0 : (float)$it->fifo_next_price;
+                return $it;
+            });
 
         return view('issue.create', compact('groups', 'items'));
     }

@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Issue;
+use App\Models\IssueLine;
 use App\Models\StockLedger;
 use App\Models\StockBatch;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 
 class StockService
@@ -207,7 +210,85 @@ public function stockSummaryWithLowFlag(): array
         }
 
         $pending = $batch->unit_price === null;
-        return ['price' => $pending ? 0 : (int)$batch->unit_price, 'pending' => $pending];
+        return ['price' => $pending ? 0 : (float)$batch->unit_price, 'pending' => $pending];
+    }
+
+
+    /**
+     * Strict FIFO issue for a single item.
+     *
+     * Rules:
+     * - Consume oldest available batches first
+     * - If a batch price is pending (null), we store issue_price=0 (pending)
+     * - Each issued chunk becomes its own IssueLine linked to purchase_line_id (batch)
+     *
+     * NOTE: Must be called inside a DB transaction.
+     */
+    public function issueItemFIFO(Issue $issue, int $itemId, int $qty, ?string $specification = null): void
+    {
+        $qty = (int) $qty;
+        if ($qty <= 0) {
+            throw ValidationException::withMessages(['lines' => 'Quantity must be at least 1.']);
+        }
+
+        // Lock FIFO batches for this item.
+        $batches = StockBatch::query()
+            ->where('item_id', $itemId)
+            ->where('qty_available', '>', 0)
+            ->orderBy('purchase_date')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        $remaining = $qty;
+        foreach ($batches as $batch) {
+            if ($remaining <= 0) break;
+
+            $available = (int) $batch->qty_available;
+            if ($available <= 0) continue;
+
+            $take = min($remaining, $available);
+            if ($take <= 0) continue;
+
+            // Decrease batch available qty
+            $batch->qty_available = $available - $take;
+            if ((int)$batch->qty_available < 0) {
+                throw ValidationException::withMessages(['lines' => 'Batch stock became negative.']);
+            }
+            $batch->save();
+
+            $price = $batch->unit_price === null ? 0 : (float) $batch->unit_price;
+            $lineTotal = (float) ($take * $price);
+
+            $issueLine = IssueLine::create([
+                'issue_id' => $issue->id,
+                'purchase_line_id' => $batch->purchase_line_id,
+                'item_id' => $itemId,
+                'specification' => $specification ?? $batch->specification,
+                'issue_price' => $price,
+                'quantity' => $take,
+                'line_total' => $lineTotal,
+            ]);
+
+            $this->addIssueLedgerEntry([
+                'txn_date' => $issue->issue_date,
+                'ref_id' => $issue->id,
+                'ref_line_id' => $issueLine->id,
+                'item_id' => $itemId,
+                'qty_out' => $take,
+                'unit_price' => $price,
+                'specification_snapshot' => $issueLine->specification,
+                'created_by' => $issue->created_by ?? auth()->id(),
+            ]);
+
+            $remaining -= $take;
+        }
+
+        if ($remaining > 0) {
+            throw ValidationException::withMessages([
+                'lines' => "Not enough stock available for this item. Missing: {$remaining}",
+            ]);
+        }
     }
 
 }
