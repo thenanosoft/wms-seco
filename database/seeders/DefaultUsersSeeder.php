@@ -14,9 +14,9 @@ class DefaultUsersSeeder extends Seeder
         User::updateOrCreate(
             ['username' => 'admin'],
             [
-                'name' => 'Admin Desk',
-                'email' => 'admin@wms.test',
-                'password' => Hash::make('Admin@123'),
+                'name' => 'Main Desk Admin',
+                'email' => 'farhan987ellahi@gmail.com',
+                'password' => Hash::make('admin@123'),
                 'role' => 'admin',
                 'is_active' => true,
             ]
@@ -26,9 +26,9 @@ class DefaultUsersSeeder extends Seeder
         User::updateOrCreate(
             ['username' => 'helper'],
             [
-                'name' => 'Helper Desk',
-                'email' => 'helper@wms.test',
-                'password' => Hash::make('Helper@123'),
+                'name' => 'Store Helper',
+                'email' => 'helper@local.test',
+                'password' => Hash::make('helper@123'),
                 'role' => 'store_helper',
                 'is_active' => true,
             ]

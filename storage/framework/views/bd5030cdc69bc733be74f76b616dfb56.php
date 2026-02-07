@@ -1,50 +1,48 @@
-@extends('layouts.app')
-
-@section('content')
-<div class="max-w-6xl mx-auto" x-data="issueForm({{ $groups->toJson() }}, {{ $items->toJson() }})">
+<?php $__env->startSection('content'); ?>
+<div class="max-w-6xl mx-auto" x-data="issueForm(<?php echo e($groups->toJson()); ?>, <?php echo e($items->toJson()); ?>)">
     <div class="mb-6">
         <h1 class="text-2xl font-semibold">New Issue (Outward)</h1>
         <p class="mt-1 text-sm text-gray-600">Fast entry screen. System will block issue more than available stock.</p>
     </div>
 
-    @if ($errors->any())
+    <?php if($errors->any()): ?>
         <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             <div class="font-semibold">Please fix the errors:</div>
             <ul class="mt-2 list-disc pl-5">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
+                <?php $__currentLoopData = $errors->all(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $error): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <li><?php echo e($error); ?></li>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </ul>
         </div>
-    @endif
+    <?php endif; ?>
 
-    <form method="POST" action="{{ route('issues.store') }}" class="space-y-4">
-        @csrf
+    <form method="POST" action="<?php echo e(route('issues.store')); ?>" class="space-y-4">
+        <?php echo csrf_field(); ?>
 
         <div class="rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                     <label class="text-sm font-medium">Date</label>
                     <input type="date" name="issue_date" class="mt-1 w-full rounded-lg border-gray-200"
-                           value="{{ old('issue_date', now()->format('Y-m-d')) }}" required>
+                           value="<?php echo e(old('issue_date', now()->format('Y-m-d'))); ?>" required>
                 </div>
 
                 <div>
                     <label class="text-sm font-medium">Issued To</label>
                     <input type="text" name="issued_to" class="mt-1 w-full rounded-lg border-gray-200"
-                           value="{{ old('issued_to') }}" placeholder="Optional">
+                           value="<?php echo e(old('issued_to')); ?>" placeholder="Optional">
                 </div>
 
                 <div>
                     <label class="text-sm font-medium">Reference No</label>
                     <input type="text" name="reference_no" class="mt-1 w-full rounded-lg border-gray-200"
-                           value="{{ old('reference_no') }}" placeholder="Optional">
+                           value="<?php echo e(old('reference_no')); ?>" placeholder="Optional">
                 </div>
 
                 <div>
                     <label class="text-sm font-medium">Notes</label>
                     <input type="text" name="notes" class="mt-1 w-full rounded-lg border-gray-200"
-                           value="{{ old('notes') }}" placeholder="Optional">
+                           value="<?php echo e(old('notes')); ?>" placeholder="Optional">
                 </div>
             </div>
         </div>
@@ -198,7 +196,7 @@
         </div>
 
         <div class="flex items-center justify-end gap-3">
-            <a href="{{ route('issues.index') }}"
+            <a href="<?php echo e(route('issues.index')); ?>"
                class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium hover:bg-gray-50">
                 Cancel
             </a>
@@ -362,4 +360,6 @@ validateQty(idx) {
     }
 }
 </script>
-@endsection
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /Users/farhanellahi/Development/web/laravel/wms/resources/views/issue/create.blade.php ENDPATH**/ ?>

@@ -123,8 +123,21 @@ class PurchaseController extends Controller
         $groups = Group::query()->orderBy('group_code')->get(['id','group_code','group_name']);
         $items = Item::query()->orderBy('item_code')->get(['id','group_id','item_code','name','default_spec']);
 
-        return view('purchase.edit', compact('purchase','groups','items'));
+        $existingLines = $purchase->lines->map(function (PurchaseLine $line) {
+            return [
+                'id' => $line->id,
+                'group_id' => $line->item?->group_id,
+                'item_id' => $line->item_id,
+                'item_label' => ($line->item?->item_code ?? '') . ' - ' . ($line->item?->name ?? ''),
+                'specification' => $line->specification,
+                'purchase_price' => $line->purchase_price,
+                'quantity' => $line->quantity,
+            ];
+        })->values();
+
+        return view('purchase.edit', compact('purchase','groups','items','existingLines'));
     }
+
 
     public function update(Request $request, Purchase $purchase, StockService $stock, FifoService $fifo)
     {
@@ -304,6 +317,6 @@ class PurchaseController extends Controller
         $groups = Group::query()->orderBy('group_code')->get();
         $items = Item::query()->orderBy('item_code')->get();
 
-        return view('purchase.items', compact('rows','purchases','groups','items'));
+        return view('purchase.items-index', compact('rows','purchases','groups','items'));
     }
 }

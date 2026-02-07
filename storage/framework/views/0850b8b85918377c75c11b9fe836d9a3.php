@@ -1,56 +1,54 @@
-@extends('layouts.app')
-
-@section('content')
+<?php $__env->startSection('content'); ?>
 <div class="max-w-6xl mx-auto" x-data="purchaseEditForm({
-    existingLines: @js($existingLines),
-    groups: @js($groups),
-    items: @js($items),
+    existingLines: <?php echo \Illuminate\Support\Js::from($existingLines)->toHtml() ?>,
+    groups: <?php echo \Illuminate\Support\Js::from($groups)->toHtml() ?>,
+    items: <?php echo \Illuminate\Support\Js::from($items)->toHtml() ?>,
 })">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-6">
         <div>
             <h1 class="text-2xl font-semibold">Edit Purchase</h1>
-            <p class="text-sm text-gray-600">Purchase #{{ $purchase->id }}</p>
+            <p class="text-sm text-gray-600">Purchase #<?php echo e($purchase->id); ?></p>
         </div>
-        <a href="{{ route('purchases.show', $purchase) }}" class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Back</a>
+        <a href="<?php echo e(route('purchases.show', $purchase)); ?>" class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Back</a>
     </div>
 
-    @if(session('status'))
-        <div class="mb-4 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-800">{{ session('status') }}</div>
-    @endif
+    <?php if(session('status')): ?>
+        <div class="mb-4 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-800"><?php echo e(session('status')); ?></div>
+    <?php endif; ?>
 
-    @if($errors->any())
+    <?php if($errors->any()): ?>
         <div class="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             <div class="font-semibold mb-2">Please fix the following:</div>
             <ul class="list-disc ml-5">
-                @foreach($errors->all() as $e)
-                    <li>{{ $e }}</li>
-                @endforeach
+                <?php $__currentLoopData = $errors->all(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $e): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <li><?php echo e($e); ?></li>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </ul>
         </div>
-    @endif
+    <?php endif; ?>
 
-    <form method="POST" action="{{ route('purchases.update', $purchase) }}" class="space-y-4">
-        @csrf
-        @method('PUT')
+    <form method="POST" action="<?php echo e(route('purchases.update', $purchase)); ?>" class="space-y-4">
+        <?php echo csrf_field(); ?>
+        <?php echo method_field('PUT'); ?>
 
         <div class="rounded-xl border border-gray-200 bg-white p-4">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                     <label class="block text-xs text-gray-600">Purchase Date</label>
-                    <input type="date" name="purchase_date" value="{{ old('purchase_date', optional($purchase->purchase_date)->format('Y-m-d')) }}" class="mt-1 w-full rounded-lg border-gray-200" required>
+                    <input type="date" name="purchase_date" value="<?php echo e(old('purchase_date', optional($purchase->purchase_date)->format('Y-m-d'))); ?>" class="mt-1 w-full rounded-lg border-gray-200" required>
                 </div>
                 <div>
                     <label class="block text-xs text-gray-600">Supplier Name</label>
-                    <input type="text" name="supplier_name" value="{{ old('supplier_name', $purchase->supplier_name) }}" class="mt-1 w-full rounded-lg border-gray-200" placeholder="Optional">
+                    <input type="text" name="supplier_name" value="<?php echo e(old('supplier_name', $purchase->supplier_name)); ?>" class="mt-1 w-full rounded-lg border-gray-200" placeholder="Optional">
                 </div>
                 <div>
                     <label class="block text-xs text-gray-600">Reference No</label>
-                    <input type="text" name="reference_no" value="{{ old('reference_no', $purchase->reference_no) }}" class="mt-1 w-full rounded-lg border-gray-200" placeholder="Optional">
+                    <input type="text" name="reference_no" value="<?php echo e(old('reference_no', $purchase->reference_no)); ?>" class="mt-1 w-full rounded-lg border-gray-200" placeholder="Optional">
                 </div>
             </div>
             <div class="mt-4">
                 <label class="block text-xs text-gray-600">Notes</label>
-                <textarea name="notes" rows="2" class="mt-1 w-full rounded-lg border-gray-200" placeholder="Optional">{{ old('notes', $purchase->notes) }}</textarea>
+                <textarea name="notes" rows="2" class="mt-1 w-full rounded-lg border-gray-200" placeholder="Optional"><?php echo e(old('notes', $purchase->notes)); ?></textarea>
             </div>
         </div>
 
@@ -160,4 +158,6 @@ function purchaseEditForm({ existingLines, groups, items }) {
     }
 }
 </script>
-@endsection
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /Users/farhanellahi/Development/web/laravel/wms/resources/views/purchase/edit.blade.php ENDPATH**/ ?>

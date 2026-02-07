@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\StockLedger;
+use App\Models\StockBatch;
 use Illuminate\Support\Facades\DB;
 
 class StockService
@@ -186,5 +187,27 @@ public function stockSummaryWithLowFlag(): array
 }
 
 
+
+
+    /**
+     * Returns the unit price of the NEXT FIFO batch that will be issued (oldest available batch).
+     * If that batch price is still pending (null), pending=true and price=0 for display.
+     */
+    public function getNextFifoIssueUnitPrice(int $itemId): array
+    {
+        $batch = StockBatch::query()
+            ->where('item_id', $itemId)
+            ->where('qty_available', '>', 0)
+            ->orderBy('purchase_date')
+            ->orderBy('id')
+            ->first();
+
+        if (!$batch) {
+            return ['price' => 0, 'pending' => false];
+        }
+
+        $pending = $batch->unit_price === null;
+        return ['price' => $pending ? 0 : (int)$batch->unit_price, 'pending' => $pending];
+    }
 
 }

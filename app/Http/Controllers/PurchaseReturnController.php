@@ -65,7 +65,8 @@ class PurchaseReturnController extends Controller
                 $lines = $selectedPurchase->lines->map(function (PurchaseLine $line) use ($stockSvc) {
                     $returned = (int) PurchaseReturnLine::query()->where('purchase_line_id', $line->id)->sum('quantity');
                     $remainingFromPurchase = max(0, (int)$line->quantity - $returned);
-                    $availableNow = (int) $stockSvc->getAvailableStock($line->item_id);
+                    $batch = StockBatch::query()->where('purchase_line_id', $line->id)->first();
+                    $availableNow = (int)($batch?->qty_available ?? 0);
                     $maxReturn = max(0, min($remainingFromPurchase, $availableNow));
 
                     return [
@@ -130,7 +131,8 @@ class PurchaseReturnController extends Controller
 
                 $alreadyReturned = (int) PurchaseReturnLine::query()->where('purchase_line_id', $purchaseLine->id)->sum('quantity');
                 $remainingFromPurchase = max(0, (int)$purchaseLine->quantity - $alreadyReturned);
-                $availableNow = (int) $stock->getAvailableStock($purchaseLine->item_id);
+                $batch = StockBatch::query()->where('purchase_line_id', $purchaseLine->id)->lockForUpdate()->first();
+                $availableNow = (int)($batch?->qty_available ?? 0);
                 $maxReturn = max(0, min($remainingFromPurchase, $availableNow));
 
                 if ($qty > $maxReturn) {
@@ -160,10 +162,6 @@ class PurchaseReturnController extends Controller
                 ]);
 
                 // Decrease availability in the SAME FIFO batch (purchase line).
-                $batch = StockBatch::query()
-                    ->where('purchase_line_id', $purchaseLine->id)
-                    ->lockForUpdate()
-                    ->first();
 
                 if ($batch) {
                     $batch->qty_available = (int)$batch->qty_available - $qty;

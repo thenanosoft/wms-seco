@@ -56,8 +56,8 @@ class IssueController extends Controller
         ->orderBy('item_code')
         ->get()
         ->map(function ($item) use ($stock) {
-            $price = $stock->getLastPurchasePrice($item->id);
             $stockInfo = $stock->getAvailableStockDetailed($item->id);
+            $fifoNext = $stock->getNextFifoIssueUnitPrice($item->id);
 
             return [
                 'id' => $item->id,
@@ -65,8 +65,10 @@ class IssueController extends Controller
                 'item_code' => $item->item_code,
                 'name' => $item->name,
                 'default_spec' => $item->default_spec,
-                'last_price' => $price,
-                'available_stock' => $stockInfo['available'],
+                // UI display only
+                'fifo_next_price' => (int)($fifoNext['price'] ?? 0),
+                'fifo_price_pending' => (bool)($fifoNext['pending'] ?? false),
+                'available_stock' => (int)($stockInfo['available'] ?? 0),
             ];
         });
 
