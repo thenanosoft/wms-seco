@@ -16,15 +16,33 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class ExportController extends Controller
 {
 
-    private function streamCsv(string $filename, array $headerRow, \Closure $rowWriter)
+    private function printedByLabel(): string
+    {
+        $u = auth()->user();
+        $username = $u?->username ?: ($u?->name ?: '');
+        $role = (string)($u?->role ?? '');
+        $roleLabel = $role === 'admin' ? 'Admin' : ($role === 'store_helper' ? 'Store Helper' : ucfirst(str_replace('_',' ', $role)));
+
+        return trim($roleLabel . ($username ? ' - ' . $username : ''));
+    }
+
+    private function streamCsv(string $filename, string $title, array $headerRow, \Closure $rowWriter)
     {
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
-        return Response::stream(function () use ($headerRow, $rowWriter) {
+        return Response::stream(function () use ($title, $headerRow, $rowWriter) {
             $out = fopen('php://output', 'w');
+
+            // Meta rows (company, datetime, printed by)
+            fputcsv($out, [config('app.name')]);
+            fputcsv($out, [$title]);
+            fputcsv($out, ['Generated At', now()->format('Y-m-d H:i:s')]);
+            fputcsv($out, ['Printed By', $this->printedByLabel()]);
+            fputcsv($out, []);
+
             fputcsv($out, $headerRow);
             $rowWriter($out);
             fclose($out);
@@ -157,6 +175,13 @@ class ExportController extends Controller
         $callback = function () use ($rows) {
             $out = fopen('php://output', 'w');
 
+            // Meta rows
+            fputcsv($out, [config('app.name')]);
+            fputcsv($out, ['Purchases']);
+            fputcsv($out, ['Generated At', now()->format('Y-m-d H:i:s')]);
+            fputcsv($out, ['Printed By', $this->printedByLabel()]);
+            fputcsv($out, []);
+
             fputcsv($out, [
                 'Date','Group Code','Group Name','Item Code','Item Name','Specification','Qty In','Price','Total','Supplier','Reference'
             ]);
@@ -197,6 +222,13 @@ class ExportController extends Controller
         $callback = function () use ($rows) {
             $out = fopen('php://output', 'w');
 
+            // Meta rows
+            fputcsv($out, [config('app.name')]);
+            fputcsv($out, ['Issues']);
+            fputcsv($out, ['Generated At', now()->format('Y-m-d H:i:s')]);
+            fputcsv($out, ['Printed By', $this->printedByLabel()]);
+            fputcsv($out, []);
+
             fputcsv($out, [
                 'Date','Group Code','Group Name','Item Code','Item Name','Specification','Qty Out','Price','Total','Issued To','Reference'
             ]);
@@ -236,6 +268,13 @@ class ExportController extends Controller
         $callback = function () use ($rows) {
             $out = fopen('php://output', 'w');
 
+            // Meta rows
+            fputcsv($out, [config('app.name')]);
+            fputcsv($out, ['Stock Summary']);
+            fputcsv($out, ['Generated At', now()->format('Y-m-d H:i:s')]);
+            fputcsv($out, ['Printed By', $this->printedByLabel()]);
+            fputcsv($out, []);
+
             fputcsv($out, ['Group Code','Item Code','Item Name','Total In','Total Out','Balance']);
 
             foreach ($rows as $r) {
@@ -268,6 +307,13 @@ class ExportController extends Controller
 
     $callback = function () use ($rows) {
         $out = fopen('php://output', 'w');
+
+        // Meta rows
+        fputcsv($out, [config('app.name')]);
+        fputcsv($out, ['Returns']);
+        fputcsv($out, ['Generated At', now()->format('Y-m-d H:i:s')]);
+        fputcsv($out, ['Printed By', $this->printedByLabel()]);
+        fputcsv($out, []);
 
         fputcsv($out, [
             'Date','Type','Group Code','Item Code','Item Name','Qty','Price','Total','Party','Reference'
@@ -356,6 +402,7 @@ class ExportController extends Controller
 
         return $this->streamCsv(
             'issue_returns_' . now()->format('Ymd_His') . '.csv',
+            'Issue Returns',
             ['Date','Group Code','Item Code','Item','Qty','Unit Price','Total','Reference','Notes'],
             function($out) use ($q) {
                 $q->chunk(1000, function($rows) use ($out) {
@@ -406,6 +453,7 @@ class ExportController extends Controller
 
         return $this->streamCsv(
             'purchase_returns_' . now()->format('Ymd_His') . '.csv',
+            'Purchase Returns',
             ['Date','Group Code','Item Code','Item','Qty','Unit Price','Total','Reference','Notes'],
             function($out) use ($q) {
                 $q->chunk(1000, function($rows) use ($out) {

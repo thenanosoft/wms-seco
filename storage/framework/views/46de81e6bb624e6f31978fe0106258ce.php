@@ -21,7 +21,7 @@
         <button onclick="window.print()">Print</button>
     </div>
 
-    @include('partials.report_header', ['title' => 'Purchase Items'])
+    <?php echo $__env->make('partials.report_header', ['title' => 'Purchase Items'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
     <table>
         <thead>
@@ -38,20 +38,21 @@
         </tr>
         </thead>
         <tbody>
-        @foreach($rows as $r)
+        <?php $__currentLoopData = $rows; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $r): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
             <tr>
-                <td>{{ $r->purchase_date }}</td>
-                <td>{{ $r->group_code }}</td>
-                <td>{{ $r->item_code }} - {{ $r->item_name }}</td>
-                <td>{{ $r->specification }}</td>
-                <td class="right">{{ $r->quantity }}</td>
-                <td class="right">{{ number_format($r->purchase_price, 0) }}</td>
-                <td class="right">{{ number_format($r->line_total, 0) }}</td>
-                <td>{{ $r->supplier_name }}</td>
-                <td>{{ $r->reference_no }}</td>
+                <td><?php echo e($r->purchase_date); ?></td>
+                <td><?php echo e($r->group_code); ?></td>
+                <td><?php echo e($r->item_code); ?> - <?php echo e($r->item_name); ?></td>
+                <td><?php echo e($r->specification); ?></td>
+                <td class="right"><?php echo e($r->quantity); ?></td>
+                <td class="right"><?php echo e(number_format($r->purchase_price, 0)); ?></td>
+                <td class="right"><?php echo e(number_format($r->line_total, 0)); ?></td>
+                <td><?php echo e($r->supplier_name); ?></td>
+                <td><?php echo e($r->reference_no); ?></td>
             </tr>
-        @endforeach
+        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </tbody>
     </table>
 </body>
 </html>
+<?php /**PATH /Users/farhanellahi/Development/web/laravel/wms/resources/views/print/purchases.blade.php ENDPATH**/ ?>

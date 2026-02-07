@@ -5,7 +5,10 @@
     <title>Purchases PDF</title>
     <style>
         body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 10px; color: #111; }
-        h2 { margin: 0 0 10px; }
+        .report-header { text-align: center; margin: 0 0 12px; }
+        .report-header .company { font-size: 16px; font-weight: 700; }
+        .report-header .title { font-size: 12px; font-weight: 700; margin-top: 6px; }
+        .report-header .meta { font-size: 10px; margin-top: 2px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #ddd; padding: 5px; }
         th { background: #f3f3f3; text-align: left; }
@@ -13,7 +16,7 @@
     </style>
 </head>
 <body>
-    <h2>Purchase Items</h2>
+    <?php echo $__env->make('partials.report_header', ['title' => 'Purchase Items'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
     <table>
         <thead>
         <tr>

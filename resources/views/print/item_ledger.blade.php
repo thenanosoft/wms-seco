@@ -6,9 +6,11 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <style>
         body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color:#111; }
-        .header { margin-bottom: 12px; }
-        .title { font-size: 18px; font-weight: bold; margin: 0; }
-        .sub { margin: 4px 0 0; color:#444; }
+        .report-header { text-align: center; margin: 0 0 12px; }
+        .report-header .company { font-size: 16px; font-weight: 700; }
+        .report-header .title { font-size: 13px; font-weight: 700; margin-top: 6px; }
+        .report-header .meta { font-size: 11px; margin-top: 2px; }
+        .sub { margin: 6px 0 0; color:#444; text-align:center; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 6px 8px; vertical-align: top; }
         th { background: #f4f4f4; text-align: left; }
@@ -45,34 +47,23 @@
     };
 @endphp
 
-<div class="header">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
-        <div>
-            <p class="title">Item Ledger</p>
-            <p class="sub">
-                <span class="muted">Generated:</span> {{ now()->format('Y-m-d H:i') }}
-            </p>
-            <p class="sub">
-                <span class="muted">Item:</span>
-                {{ $item?->item_code }} - {{ $item?->name }}
-                @if($group)
-                    <span class="muted">| Group:</span> {{ $group->group_code }} {{ $group->group_name ? ' - '.$group->group_name : '' }}
-                @endif
-            </p>
-        </div>
+<div class="no-print" style="margin-bottom:10px;">
+    <button onclick="window.print()" style="padding:8px 12px; border:1px solid #ddd; border-radius:6px; background:#111; color:#fff; cursor:pointer;">Print</button>
+</div>
 
-        <div class="no-print">
-            <button onclick="window.print()" style="padding:8px 12px; border:1px solid #ddd; border-radius:6px; background:#111; color:#fff; cursor:pointer;">
-                Print
-            </button>
-        </div>
-    </div>
+@include('partials.report_header', ['title' => 'Item Ledger'])
 
-    <div class="totals">
-        <div><b>Total In:</b> {{ (int)$totalIn }}</div>
-        <div><b>Total Out:</b> {{ (int)$totalOut }}</div>
-        <div><b>Balance:</b> {{ (int)$balance }}</div>
-    </div>
+<p class="sub">
+    <span class="muted">Item:</span> {{ $item?->item_code }} - {{ $item?->name }}
+    @if($group)
+        <span class="muted">| Group:</span> {{ $group->group_code }}{{ $group->group_name ? ' - '.$group->group_name : '' }}
+    @endif
+</p>
+
+<div class="totals" style="justify-content:center;">
+    <div><b>Total In:</b> {{ (int)$totalIn }}</div>
+    <div><b>Total Out:</b> {{ (int)$totalOut }}</div>
+    <div><b>Balance:</b> {{ (int)$balance }}</div>
 </div>
 
 <table>

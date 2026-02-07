@@ -5,7 +5,10 @@
     <title>Stock Print</title>
     <style>
         body { font-family: Arial, sans-serif; font-size: 12px; color: #111; }
-        h2 { margin: 0 0 10px; }
+        .report-header { text-align: center; margin: 0 0 12px; }
+        .report-header .company { font-size: 16px; font-weight: 700; }
+        .report-header .title { font-size: 13px; font-weight: 700; margin-top: 6px; }
+        .report-header .meta { font-size: 11px; margin-top: 2px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #ddd; padding: 6px; }
         th { background: #f3f3f3; text-align: left; }
@@ -18,7 +21,7 @@
         <button onclick="window.print()">Print</button>
     </div>
 
-    <h2>Stock Summary</h2>
+    @include('partials.report_header', ['title' => 'Stock Summary'])
 
     <table>
         <thead>
