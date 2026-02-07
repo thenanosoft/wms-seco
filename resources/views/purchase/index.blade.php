@@ -61,6 +61,7 @@
                         <th class="px-4 py-3 text-left font-semibold">Ref</th>
                         <th class="px-4 py-3 text-left font-semibold">Created By</th>
                         <th class="px-4 py-3 text-left font-semibold">Pending Prices</th>
+                        <th class="px-4 py-3 text-right font-semibold">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -82,10 +83,33 @@
                                     <span class="text-xs text-gray-500">OK</span>
                                 @endif
                             </td>
+                            <td class="px-4 py-3 text-right">
+                                <div class="inline-flex items-center gap-2">
+                                    <a href="{{ route('purchases.edit', $p) }}" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50" title="Edit">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4">
+                                            <path d="M12 20h9" />
+                                            <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                                        </svg>
+                                    </a>
+                                    <form action="{{ route('purchases.destroy', $p) }}" method="POST" onsubmit="return confirm('Delete this purchase? If stock was issued from this purchase, all related issues/returns will also be deleted.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 text-red-700 hover:bg-red-50" title="Delete">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4">
+                                                <path d="M3 6h18" />
+                                                <path d="M8 6V4h8v2" />
+                                                <path d="M6 6l1 16h10l1-16" />
+                                                <path d="M10 11v6" />
+                                                <path d="M14 11v6" />
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td class="px-4 py-6 text-center text-gray-600" colspan="6">
+                            <td class="px-4 py-6 text-center text-gray-600" colspan="7">
                                 No purchases yet.
                             </td>
                         </tr>

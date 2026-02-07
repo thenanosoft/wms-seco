@@ -1,9 +1,6 @@
 <div class="h-full flex flex-col">
     <div class="px-5 py-4 border-b border-gray-200">
-        <div class="text-base font-semibold leading-tight">
-            Warehouse Store
-            <div class="text-base font-semibold">Management System</div>
-        </div>
+        <div class="text-base font-semibold leading-tight"><?php echo e(config('app.name', 'Warehouse Store Management System')); ?></div>
         <div class="mt-1 text-xs text-gray-600">
             Offline LAN Inventory
         </div>
@@ -79,6 +76,28 @@
                             <path d="M16 13v-2" />
                         </svg>
                         Stock & Reports
+                    </a>
+
+                    <a href="<?php echo e(route('pending_prices.index')); ?>"
+                       class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium
+                       <?php echo e(request()->routeIs('pending_prices.*') ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'); ?>">
+                        <svg class="h-5 w-5 flex-none opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path d="M12 2v20" />
+                            <path d="M4 6h16" />
+                            <path d="M4 12h16" />
+                            <path d="M4 18h16" />
+                        </svg>
+                        Pending Prices
+                    </a>
+
+                    <a href="<?php echo e(route('reports.valuation.index')); ?>"
+                       class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium
+                       <?php echo e(request()->routeIs('reports.valuation.*') ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'); ?>">
+                        <svg class="h-5 w-5 flex-none opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path d="M3 3v18h18" />
+                            <path d="M7 14l3-3 4 4 5-6" />
+                        </svg>
+                        FIFO Valuation
                     </a>
 
                     <a href="<?php echo e(route('purchases.items.index')); ?>"

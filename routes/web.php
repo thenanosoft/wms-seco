@@ -64,6 +64,21 @@ Route::get('/issues/{issue}', [\App\Http\Controllers\IssueController::class, 'sh
     ->whereNumber('issue')
     ->middleware(['role:admin,store_helper']);
 
+Route::get('/issues/{issue}/edit', [\App\Http\Controllers\IssueController::class, 'edit'])
+    ->name('issues.edit')
+    ->whereNumber('issue')
+    ->middleware(['role:admin']);
+
+Route::put('/issues/{issue}', [\App\Http\Controllers\IssueController::class, 'update'])
+    ->name('issues.update')
+    ->whereNumber('issue')
+    ->middleware(['role:admin']);
+
+Route::delete('/issues/{issue}', [\App\Http\Controllers\IssueController::class, 'destroy'])
+    ->name('issues.destroy')
+    ->whereNumber('issue')
+    ->middleware(['role:admin']);
+
 
     Route::get('/stock', [\App\Http\Controllers\StockController::class, 'index'])
     ->name('stock.index')
@@ -104,6 +119,22 @@ Route::get('/issues/{issue}', [\App\Http\Controllers\IssueController::class, 'sh
     Route::post('/settings', [\App\Http\Controllers\SettingsController::class, 'update'])
     ->name('settings.update')
     ->middleware(['auth','role:admin']);
+    Route::get('/pending-prices', [\App\Http\Controllers\PendingPricesController::class, 'index'])
+        ->name('pending_prices.index')
+        ->middleware(['auth','role:admin']);
+
+    Route::get('/reports/valuation', [\App\Http\Controllers\ValuationController::class, 'index'])
+        ->name('reports.valuation.index')
+        ->middleware(['auth','role:admin']);
+
+    Route::get('/imports/samples/{type}.csv', [\App\Http\Controllers\ImportController::class, 'downloadSample'])
+        ->name('imports.samples')
+        ->middleware(['auth','role:admin']);
+
+    Route::post('/imports/{type}', [\App\Http\Controllers\ImportController::class, 'import'])
+        ->name('imports.run')
+        ->middleware(['auth','role:admin']);
+
 
     Route::get('/backup', [\App\Http\Controllers\BackupController::class,'index'])
     ->name('backup.index')

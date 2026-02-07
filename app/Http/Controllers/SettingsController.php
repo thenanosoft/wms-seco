@@ -9,16 +9,18 @@ use App\Models\Group;
 use App\Models\Item;
 use App\Models\Purchase;
 use App\Models\Issue;
-use Illuminate\Support\Facades\DB;
 
 class SettingsController extends Controller
 {
     public function index()
     {
         $defaultLow = AppSetting::get('default_low_stock_threshold', '0');
+        $storeName = AppSetting::get('store_name', 'Warehouse Store Management System');
+        $timezone = AppSetting::get('timezone', 'Asia/Karachi');
+
         $backup = BackupSetting::query()->latest('id')->first();
 
-        // Export filters data (Admin only page)
+        // Export filters data
         $groups = Group::query()->orderBy('group_code')->get(['id','group_code','group_name']);
         $items = Item::query()->orderBy('item_code')->get(['id','group_id','item_code','name']);
         $suppliers = Purchase::query()
@@ -36,16 +38,27 @@ class SettingsController extends Controller
             ->orderBy('issued_to')
             ->pluck('issued_to');
 
-        return view('settings.index', compact('defaultLow','groups','items','suppliers','issuedTos'));
+        return view('settings.index', compact('defaultLow','storeName','timezone','groups','items','suppliers','issuedTos'));
     }
 
     public function update(UpdateSettingsRequest $request)
-{
-    $data = $request->validated();
+    {
+        $data = $request->validated();
 
-    AppSetting::set('default_low_stock_threshold', (string)($data['default_low_stock_threshold'] ?? '0'));
+        AppSetting::set('default_low_stock_threshold', (string)($data['default_low_stock_threshold'] ?? '0'));
 
-    return redirect()->route('settings.index')->with('status', 'Settings saved');
-}
+        $storeName = trim((string)($data['store_name'] ?? ''));
+        if ($storeName === '') {
+            $storeName = 'Warehouse Store Management System';
+        }
+        AppSetting::set('store_name', $storeName);
 
+        $timezone = (string)($data['timezone'] ?? 'Asia/Karachi');
+        if ($timezone === '') {
+            $timezone = 'Asia/Karachi';
+        }
+        AppSetting::set('timezone', $timezone);
+
+        return redirect()->route('settings.index')->with('status', 'Settings saved');
+    }
 }

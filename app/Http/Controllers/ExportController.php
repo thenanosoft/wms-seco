@@ -478,6 +478,21 @@ public function csvFullHistory(Request $request)
         }
     }
 
+
+    // Simple type filter used by Settings screen
+    if ($request->filled('type') && !$request->filled('txn_types')) {
+        $t = $request->string('type')->toString();
+        $map = [
+            'purchase' => 'PURCHASE',
+            'issue' => 'ISSUE',
+            'issue_return' => 'ISSUE_RETURN_IN',
+            'purchase_return' => 'PURCHASE_RETURN_OUT',
+        ];
+        if (isset($map[$t])) {
+            $request->merge(['txn_types' => $map[$t]]);
+        }
+    }
+
     $query = StockLedger::query()
         ->select([
             'stock_ledger.txn_date',
@@ -522,6 +537,18 @@ public function csvFullHistory(Request $request)
     }
     if ($request->filled('issued_to')) {
         $query->where('issues.issued_to', $request->issued_to);
+    }
+
+    if ($request->filled('q')) {
+        $term = $request->string('q')->toString();
+        $query->where(function ($w) use ($term) {
+            $like = '%' . $term . '%';
+            $w->where('purchases.supplier_name', 'like', $like)
+              ->orWhere('purchases.reference_no', 'like', $like)
+              ->orWhere('issues.issued_to', 'like', $like)
+              ->orWhere('issues.reference_no', 'like', $like)
+              ->orWhere('stock_ledger.ref_id', 'like', $like);
+        });
     }
 
     // Transaction type filter (purchase / issue / returns etc.)

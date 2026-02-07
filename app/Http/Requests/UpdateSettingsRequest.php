@@ -14,6 +14,8 @@ class UpdateSettingsRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'store_name' => ['nullable','string','max:120'],
+            'timezone' => ['nullable','string','in:Asia/Karachi'],
             'default_low_stock_threshold' => ['nullable','numeric','min:0'],
         ];
     }

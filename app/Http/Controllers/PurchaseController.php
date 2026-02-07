@@ -261,32 +261,89 @@ class PurchaseController extends Controller
         return DB::transaction(function () use ($purchase) {
             $lineIds = $purchase->lines->pluck('id')->all();
 
-            $hasConsumed = StockBatch::query()
-                ->whereIn('purchase_line_id', $lineIds)
-                ->whereRaw('qty_available < qty_purchased')
-                ->exists();
+            // HARD delete protection:
+            // Allow deletion even if stock was issued, but delete everything related to this purchase
+            // (issues, returns, ledger entries, and batches) so the system stays consistent.
 
-            $hasPurchaseReturns = PurchaseReturnLine::query()
+            // 1) Find related issues (that consumed these purchase lines)
+            $issueIds = \App\Models\IssueLine::query()
                 ->whereIn('purchase_line_id', $lineIds)
-                ->exists();
+                ->pluck('issue_id')
+                ->unique()
+                ->values()
+                ->all();
 
-            if ($hasConsumed || $hasPurchaseReturns) {
-                return back()->withErrors([
-                    'delete' => 'Cannot delete this purchase because stock from it was already issued/returned. Only empty (unused) purchases can be deleted.'
-                ]);
+            // 2) Delete issue returns for those issues
+            $issueReturnTxnIds = [];
+            if (!empty($issueIds)) {
+                $issueLineIds = \App\Models\IssueLine::query()
+                    ->whereIn('issue_id', $issueIds)
+                    ->pluck('id')
+                    ->all();
+
+                $issueReturnTxnIds = \App\Models\IssueReturnLine::query()
+                    ->whereIn('issue_line_id', $issueLineIds)
+                    ->pluck('issue_return_transaction_id')
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                // Delete return lines then transactions
+                \App\Models\IssueReturnLine::query()->whereIn('issue_return_transaction_id', $issueReturnTxnIds)->delete();
+                \App\Models\IssueReturnTransaction::query()->whereIn('id', $issueReturnTxnIds)->delete();
+
+                // Delete ledger entries for issue returns
+                \App\Models\StockLedger::query()
+                    ->where('ref_table', 'issue_return_transactions')
+                    ->whereIn('ref_id', $issueReturnTxnIds)
+                    ->delete();
             }
 
-            StockLedger::query()
+            // 3) Delete purchase returns for these purchase lines
+            $purchaseReturnTxnIds = \App\Models\PurchaseReturnLine::query()
+                ->whereIn('purchase_line_id', $lineIds)
+                ->pluck('purchase_return_transaction_id')
+                ->unique()
+                ->values()
+                ->all();
+
+            if (!empty($purchaseReturnTxnIds)) {
+                \App\Models\PurchaseReturnLine::query()->whereIn('purchase_return_transaction_id', $purchaseReturnTxnIds)->delete();
+                \App\Models\PurchaseReturnTransaction::query()->whereIn('id', $purchaseReturnTxnIds)->delete();
+
+                \App\Models\StockLedger::query()
+                    ->where('ref_table', 'purchase_return_transactions')
+                    ->whereIn('ref_id', $purchaseReturnTxnIds)
+                    ->delete();
+            }
+
+            // 4) Delete issue lines and issue headers + ledger
+            if (!empty($issueIds)) {
+                \App\Models\IssueLine::query()->whereIn('issue_id', $issueIds)->delete();
+                \App\Models\Issue::query()->whereIn('id', $issueIds)->delete();
+
+                \App\Models\StockLedger::query()
+                    ->where('ref_table', 'issues')
+                    ->whereIn('ref_id', $issueIds)
+                    ->delete();
+            }
+
+            // 5) Delete purchase ledger entries
+            \App\Models\StockLedger::query()
                 ->where('ref_table', 'purchases')
                 ->where('ref_id', $purchase->id)
                 ->delete();
 
+            // 6) Delete stock batches tied to purchase lines
+            \App\Models\StockBatch::query()->whereIn('purchase_line_id', $lineIds)->delete();
+
+            // 7) Delete purchase lines and purchase
+            \App\Models\PurchaseLine::query()->whereIn('id', $lineIds)->delete();
             $purchase->delete();
 
             return redirect()->route('purchases.index')->with('status', 'Purchase deleted successfully.');
         });
     }
-
     public function itemsIndex(Request $request)
     {
         $q = PurchaseLine::query()
