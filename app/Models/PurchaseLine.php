@@ -19,6 +19,8 @@ class PurchaseLine extends Model
         'line_total',
     ];
 
+    
+
     public function purchase(): BelongsTo
     {
         return $this->belongsTo(Purchase::class);
@@ -29,13 +31,13 @@ class PurchaseLine extends Model
         return $this->belongsTo(Item::class);
     }
     
-    public function setPurchasePriceAttribute(): void
+    public function setPurchasePriceAttribute($value): void
     {
         // Price pending if empty or 0
-        if ( === null ||  === "" || (is_numeric() && (float) <= 0)) {
-            ->attributes["purchase_price"] = null;
+        if ($value === null || $value === "" || (is_numeric($value) && (float) $value <= 0)) {
+            $this->attributes["purchase_price"] = null;
             return;
         }
-        ->attributes["purchase_price"] = (float);
+        $this->attributes["purchase_price"] = (float) $value;
     }
 }

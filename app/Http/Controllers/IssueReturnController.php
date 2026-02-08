@@ -10,6 +10,7 @@ use App\Models\StockBatch;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\StockLedger;
 
 class IssueReturnController extends Controller
 {

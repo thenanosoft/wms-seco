@@ -188,7 +188,7 @@ Route::delete('/issues/{issue}', [\App\Http\Controllers\IssueController::class, 
     ->name('backup.restore')
     ->middleware(['auth','role:admin']);
 
-
+});
 
 // Admin only: Groups and Items
     Route::middleware(['role:admin'])->group(function () {
@@ -262,7 +262,6 @@ Route::post('/profile/users/{user}/delete', [ProfileController::class, 'deleteUs
     ->name('profile.users.delete');
 
 });
-
 
 
 require __DIR__.'/auth.php';

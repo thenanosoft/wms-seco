@@ -15,15 +15,15 @@
     <table>
         <thead>
         <tr>
-            <th class="w-10 nowrap">Date</th>
+            <th class="w-8 nowrap">Date</th>
             <th class="w-8">Group</th>
             <th class="w-25">Item</th>
-            <th>Specification</th>
-            <th class="w-8 right nowrap">Qty Out</th>
-            <th class="w-8 right nowrap">Price</th>
-            <th class="w-10 right nowrap">Total</th>
-            <th class="w-15">Issued To</th>
-            <th class="w-10 nowrap">Ref</th>
+            <th class="w-15">Specification</th>
+            <th class="w-6 right nowrap">Qty Out</th>
+            <th class="w-6 right nowrap">Price</th>
+            <th class="w-6 right nowrap">Total</th>
+            <th class="w-10">Issued To</th>
+            <th>Ref</th>
         </tr>
         </thead>
         <tbody>
