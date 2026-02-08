@@ -26,7 +26,7 @@
                     <option value="">Select</option>
                     @foreach($purchases as $p)
                         <option value="{{ $p->id }}" @selected(request('purchase_id') == $p->id)>
-                            {{ $p->purchase_date }} | {{ $p->group_code ?? 'Group' }} | {{ $p->reference_no ?? 'No Ref' }}
+                            {{ $p->purchase_date }} {{ optional($p->created_at)->format('H:i:s') }} | {{ $p->group_code ?? 'Group' }} | {{ $p->reference_no ?? 'No Ref' }}
                         </option>
                     @endforeach
                 </select>

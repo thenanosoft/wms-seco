@@ -28,4 +28,14 @@ class PurchaseLine extends Model
     {
         return $this->belongsTo(Item::class);
     }
+    
+    public function setPurchasePriceAttribute(): void
+    {
+        // Price pending if empty or 0
+        if ( === null ||  === "" || (is_numeric() && (float) <= 0)) {
+            ->attributes["purchase_price"] = null;
+            return;
+        }
+        ->attributes["purchase_price"] = (float);
+    }
 }

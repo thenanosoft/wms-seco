@@ -174,4 +174,121 @@ class IssueReturnController extends Controller
             return redirect()->route('returns.issue.index')->with('status', 'Issue return saved.');
         });
     }
+
+    public function edit(IssueReturnTransaction $issueReturnTransaction)
+    {
+        $issueReturnTransaction->load(['issue','lines.issueLine.item.group']);
+
+        return view('returns.issue.edit', [
+            'txn' => $issueReturnTransaction,
+            'issue' => $issueReturnTransaction->issue,
+        ]);
+    }
+
+    public function update(Request $request, IssueReturnTransaction $issueReturnTransaction, StockService $stock)
+    {
+        $issueReturnTransaction->load(['issue','lines']);
+
+        $data = $request->validate([
+            'return_date' => ['required','date'],
+            'notes' => ['nullable','string','max:255'],
+            'lines' => ['required','array'],
+            'lines.*.id' => ['required','integer','exists:issue_return_lines,id'],
+            'lines.*.quantity' => ['required','integer','min:0'],
+        ]);
+
+        return DB::transaction(function () use ($issueReturnTransaction, $data, $stock) {
+            // 1) Reverse current return quantities from batches
+            $issueReturnTransaction->lines->load('issueLine');
+            foreach ($issueReturnTransaction->lines as $rl) {
+                $issueLine = $rl->issueLine;
+                if (!$issueLine) continue;
+                $batch = StockBatch::where('purchase_line_id', $issueLine->purchase_line_id)->lockForUpdate()->first();
+                if ($batch) {
+                    $batch->qty_available = max(0, (int)$batch->qty_available - (int)$rl->quantity);
+                    $batch->save();
+                }
+            }
+
+            // delete ledger entries for this return txn only
+            StockLedger::query()->where('ref_table','issue_return_transactions')->where('ref_id', $issueReturnTransaction->id)->delete();
+
+            // 2) Update header
+            $issueReturnTransaction->update([
+                'return_date' => $data['return_date'],
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            // 3) Update each return line quantity and re-apply stock + ledger
+            foreach ($data['lines'] as $row) {
+                $line = $issueReturnTransaction->lines->firstWhere('id', (int)$row['id']);
+                if (!$line) continue;
+
+                $newQty = (int)$row['quantity'];
+
+                // cannot return more than issued for that issue line
+                $issueLine = \App\Models\IssueLine::query()->find($line->issue_line_id);
+                if ($issueLine) {
+                    $issuedQty = (int)$issueLine->quantity;
+                    // total returned excluding current line
+                    $already = \App\Models\IssueReturnLine::query()
+                        ->where('issue_line_id', $issueLine->id)
+                        ->where('id','!=',$line->id)
+                        ->sum('quantity');
+                    if ($newQty + (int)$already > $issuedQty) {
+                        return back()->withErrors(['lines' => 'Return qty cannot exceed issued qty.'])->withInput();
+                    }
+                }
+
+                $line->quantity = $newQty;
+                $line->save();
+
+                if ($newQty <= 0) continue;
+
+                // restore back to original batch
+                $batch = StockBatch::where('purchase_line_id', $issueLine?->purchase_line_id)->lockForUpdate()->first();
+                if ($batch) {
+                    $batch->qty_available = (int)$batch->qty_available + $newQty;
+                    $batch->save();
+                }
+
+                // ledger (in)
+                $stock->addIssueReturnLedgerEntry([
+                    'txn_date' => $issueReturnTransaction->return_date,
+                    'ref_id' => $issueReturnTransaction->id,
+                    'ref_line_id' => $line->id,
+                    'item_id' => $issueLine?->item_id,
+                    'qty_in' => $newQty,
+                    'unit_price' => (int)$issueLine?->issue_price,
+                    'specification_snapshot' => $issueLine?->specification,
+                    'created_by' => $issueReturnTransaction->created_by,
+                ]);
+            }
+
+            return redirect()->route('returns.issue.index')->with('status','Issue return updated successfully.');
+        });
+    }
+
+    public function destroy(IssueReturnTransaction $issueReturnTransaction)
+    {
+        $issueReturnTransaction->load(['lines.issueLine']);
+
+        return DB::transaction(function () use ($issueReturnTransaction) {
+            foreach ($issueReturnTransaction->lines as $rl) {
+                $issueLine = $rl->issueLine;
+                if (!$issueLine) continue;
+                $batch = StockBatch::where('purchase_line_id', $issueLine->purchase_line_id)->lockForUpdate()->first();
+                if ($batch) {
+                    $batch->qty_available = max(0, (int)$batch->qty_available - (int)$rl->quantity);
+                    $batch->save();
+                }
+            }
+
+            StockLedger::query()->where('ref_table','issue_return_transactions')->where('ref_id', $issueReturnTransaction->id)->delete();
+            \App\Models\IssueReturnLine::query()->where('issue_return_transaction_id', $issueReturnTransaction->id)->delete();
+            $issueReturnTransaction->delete();
+
+            return redirect()->route('returns.issue.index')->with('status','Issue return deleted successfully.');
+        });
+    }
 }

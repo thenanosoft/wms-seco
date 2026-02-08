@@ -238,6 +238,7 @@ function issueForm(groups, items) {
                 line_total: 0,
                 available_stock: 0,
                 price_pending: false,
+                fifo_batches: [],
             });
             this.recalcAll();
         },
@@ -316,6 +317,10 @@ function issueForm(groups, items) {
     // Available stock
     line.available_stock = Number(it.available_stock || 0);
 
+    // FIFO batches preview for accurate estimated totals
+    line.fifo_batches = Array.isArray(it.fifo_batches) ? it.fifo_batches : [];
+
+
     // Reset qty if more than stock
     if (line.quantity > line.available_stock) {
         line.quantity = line.available_stock;
@@ -345,9 +350,27 @@ validateQty(idx) {
 },
         recalc(idx) {
             const line = this.lines[idx];
-            const price = Number(line.display_price || 0);
             const qty = Number(line.quantity || 0);
-            line.line_total = Math.round(price * qty * 100) / 100;
+
+            // Estimate total using FIFO batches (older stock first)
+            let remaining = qty;
+            let total = 0;
+            const batches = Array.isArray(line.fifo_batches) ? line.fifo_batches : [];
+            for (const b of batches) {
+                if (remaining <= 0) break;
+                const take = Math.min(remaining, Number(b.qty_available || 0));
+                if (take <= 0) continue;
+                const price = Number(b.unit_price || 0);
+                total += take * price;
+                remaining -= take;
+            }
+
+            // Fallback: if no batch info, use next FIFO price as estimate
+            if (batches.length === 0) {
+                total = Number(line.display_price || 0) * qty;
+            }
+
+            line.line_total = Math.round(total * 100) / 100;
             this.recalcAll();
         },
 

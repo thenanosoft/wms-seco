@@ -291,4 +291,44 @@ public function stockSummaryWithLowFlag(): array
         }
     }
 
+
+    /**
+     * Issue additional qty from the SAME purchase_line batch (if available).
+     * Returns how much was actually issued from this batch.
+     */
+    public function issueFromPurchaseLine(Issue $issue, int $purchaseLineId, int $qty, ?string $specification = null): int
+    {
+        $qty = (int)$qty;
+        if ($qty <= 0) return 0;
+
+        $batch = StockBatch::query()
+            ->where('purchase_line_id', $purchaseLineId)
+            ->lockForUpdate()
+            ->first();
+
+        if (!$batch || (int)$batch->qty_available <= 0) {
+            return 0;
+        }
+
+        $take = min($qty, (int)$batch->qty_available);
+        if ($take <= 0) return 0;
+
+        $batch->qty_available = (int)$batch->qty_available - $take;
+        $batch->save();
+
+        $price = $batch->unit_price === null ? 0 : (int)$batch->unit_price;
+
+        IssueLine::create([
+            'issue_id' => $issue->id,
+            'purchase_line_id' => $batch->purchase_line_id,
+            'item_id' => $batch->item_id,
+            'specification' => $specification,
+            'issue_price' => $price,
+            'quantity' => $take,
+            'line_total' => $take * $price,
+        ]);
+
+        return $take;
+    }
+
 }

@@ -84,10 +84,22 @@ public function downloadLatest(BackupService $backupService)
         abort(400, 'Backup settings not configured.');
     }
 
-    $list = $backupService->listBackups($settings); // newest first already
+    $list = $backupService->listBackups($settings);
     if (empty($list)) {
         return back()->withErrors(['backup' => 'No backup files available.']);
     }
+
+    // Be extra safe: pick the max by sort_key, then by filemtime.
+    usort($list, function ($a, $b) {
+        $ak = $a['sort_key'] ?? '';
+        $bk = $b['sort_key'] ?? '';
+        if ($ak === $bk) {
+            $am = isset($a['full_path']) && file_exists($a['full_path']) ? filemtime($a['full_path']) : 0;
+            $bm = isset($b['full_path']) && file_exists($b['full_path']) ? filemtime($b['full_path']) : 0;
+            return $bm <=> $am;
+        }
+        return strcmp($bk, $ak);
+    });
 
     $latest = $list[0];
     $full = $latest['full_path'] ?? null;

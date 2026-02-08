@@ -63,6 +63,27 @@ class IssueController extends Controller
                 return $it;
             });
 
+        // Provide FIFO batches preview to frontend (for accurate estimated totals on entry)
+        $batches = StockBatch::query()
+            ->where('qty_available', '>', 0)
+            ->orderBy('purchase_date')
+            ->orderBy('id')
+            ->get(['id','item_id','qty_available','unit_price','purchase_date']);
+
+        $batchesByItem = $batches->groupBy('item_id');
+        $items = $items->map(function ($it) use ($batchesByItem) {
+            $list = $batchesByItem->get($it->id, collect());
+            $it->fifo_batches = $list->map(function ($b) {
+                return [
+                    'id' => $b->id,
+                    'qty_available' => (int)$b->qty_available,
+                    'unit_price' => $b->unit_price === null ? 0 : (float)$b->unit_price,
+                    'purchase_date' => (string)$b->purchase_date,
+                ];
+            })->values();
+            return $it;
+        });
+
         return view('issue.create', compact('groups', 'items'));
     }
 
@@ -104,7 +125,13 @@ class IssueController extends Controller
     public function show(Issue $issue)
     {
         $issue->load(['lines.item.group']);
-        return view('issue.show', compact('issue'));
+        $returned = \App\Models\IssueReturnLine::query()
+            ->selectRaw('issue_line_id, SUM(quantity) as returned_qty')
+            ->whereIn('issue_line_id', $issue->lines->pluck('id')->all())
+            ->groupBy('issue_line_id')
+            ->pluck('returned_qty', 'issue_line_id');
+
+        return view('issue.show', compact('issue', 'returned'));
     }
 
     /**
@@ -117,13 +144,17 @@ class IssueController extends Controller
     {
         $issue->load(['lines.item.group']);
 
+        // Needed for "Add new item" rows on edit screen
+        $groups = \App\Models\Group::query()->orderBy('group_code')->get();
+        $items  = \App\Models\Item::query()->orderBy('item_code')->get();
+
         $returned = IssueReturnLine::query()
             ->selectRaw('issue_line_id, SUM(quantity) as returned_qty')
             ->whereIn('issue_line_id', $issue->lines->pluck('id')->all())
             ->groupBy('issue_line_id')
             ->pluck('returned_qty', 'issue_line_id');
 
-        return view('issue.edit', compact('issue', 'returned'));
+        return view('issue.edit', compact('issue', 'returned', 'groups', 'items'));
     }
 
     public function update(Request $request, Issue $issue, StockService $stock)
@@ -137,6 +168,13 @@ class IssueController extends Controller
             'lines.*.id' => ['required','integer','exists:issue_lines,id'],
             'lines.*.new_quantity' => ['nullable','integer','min:0'],
             'lines.*.remove' => ['nullable','boolean'],
+
+            // New lines added during edit
+            'new_lines' => ['nullable','array'],
+            'new_lines.*.group_id' => ['required_with:new_lines','integer','exists:groups,id'],
+            'new_lines.*.item_id' => ['required_with:new_lines','integer','exists:items,id'],
+            'new_lines.*.specification' => ['nullable','string','max:255'],
+            'new_lines.*.quantity' => ['required_with:new_lines','integer','min:0'],
         ]);
 
         $issue->load('lines');
@@ -167,30 +205,104 @@ class IssueController extends Controller
                         $batch->qty_available = (int)$batch->qty_available + (int)$line->quantity;
                         $batch->save();
                     }
+                    // Delete matching ledger row for this line only (do not rebuild whole issue ledger)
+                    \App\Models\StockLedger::query()
+                        ->where('ref_table', 'issues')
+                        ->where('ref_id', $issue->id)
+                        ->where('ref_line_id', $line->id)
+                        ->delete();
+
                     $line->delete();
                     continue;
-                }
-
-                // No increases allowed
-                if ($newQty > (int)$line->quantity) {
-                    return back()->withErrors(['edit' => 'Increasing issued quantity is not allowed. Create a new issue instead.']);
                 }
                 if ($newQty < $retQty) {
                     return back()->withErrors(['edit' => 'New quantity cannot be less than already returned quantity.']);
                 }
 
-                $diff = (int)$line->quantity - $newQty;
-                if ($diff > 0) {
-                    $batch = StockBatch::where('purchase_line_id', $line->purchase_line_id)->first();
+                $oldQty = (int)$line->quantity;
+                $diff = $newQty - $oldQty;
+
+                if ($diff < 0) {
+                    // Decrease: reverse qty back to same batch
+                    $giveBack = abs($diff);
+                    $batch = StockBatch::where('purchase_line_id', $line->purchase_line_id)->lockForUpdate()->first();
                     if ($batch) {
-                        $batch->qty_available = (int)$batch->qty_available + $diff;
+                        $batch->qty_available = (int)$batch->qty_available + $giveBack;
                         $batch->save();
                     }
 
                     $line->quantity = $newQty;
                     $line->line_total = $newQty * (int)$line->issue_price;
                     $line->save();
+
+                    // Update ledger row in-place
+                    \App\Models\StockLedger::query()
+                        ->where('ref_table', 'issues')
+                        ->where('ref_id', $issue->id)
+                        ->where('ref_line_id', $line->id)
+                        ->update([
+                            'txn_date' => $issue->issue_date,
+                            'qty_out' => (int)$line->quantity,
+                            'unit_price' => (int)$line->issue_price,
+                            'specification_snapshot' => $line->specification,
+                        ]);
+                    continue;
                 }
+
+                if ($diff > 0) {
+                    // Increase: first try from same batch (keeps same price), then FIFO for remaining.
+                    $remaining = $diff;
+
+                    $batch = StockBatch::where('purchase_line_id', $line->purchase_line_id)->lockForUpdate()->first();
+                    if ($batch && (int)$batch->qty_available > 0) {
+                        $takeSame = min($remaining, (int)$batch->qty_available);
+                        if ($takeSame > 0) {
+                            $batch->qty_available = (int)$batch->qty_available - $takeSame;
+                            $batch->save();
+
+                            $line->quantity = $oldQty + $takeSame;
+                            $line->line_total = (int)$line->quantity * (int)$line->issue_price;
+                            $line->save();
+
+                            \App\Models\StockLedger::query()
+                                ->where('ref_table', 'issues')
+                                ->where('ref_id', $issue->id)
+                                ->where('ref_line_id', $line->id)
+                                ->update([
+                                    'txn_date' => $issue->issue_date,
+                                    'qty_out' => (int)$line->quantity,
+                                    'unit_price' => (int)$line->issue_price,
+                                    'specification_snapshot' => $line->specification,
+                                ]);
+
+                            $remaining -= $takeSame;
+                        }
+                    }
+
+                    if ($remaining > 0) {
+                        // Allocate remaining as NEW issue lines using FIFO
+                        $stock->issueItemFIFO(
+                            issue: $issue,
+                            itemId: (int)$line->item_id,
+                            qty: (int)$remaining,
+                            specification: $line->specification,
+                        );
+                    }
+                }
+
+            }
+
+            // Add new items added during edit (FIFO allocation creates new issue lines + ledgers)
+            foreach (($data['new_lines'] ?? []) as $nl) {
+                $qty = (int)($nl['quantity'] ?? 0);
+                if ($qty <= 0) continue;
+
+                $stock->issueItemFIFO(
+                    issue: $issue,
+                    itemId: (int)$nl['item_id'],
+                    qty: $qty,
+                    specification: $nl['specification'] ?? null,
+                );
             }
 
             // Update issue header
@@ -201,21 +313,41 @@ class IssueController extends Controller
                 'notes' => $data['notes'] ?? null,
             ]);
 
-            // Rebuild ledger entries for this issue (keep system consistent)
-            StockLedger::query()->where('ref_table', 'issues')->where('ref_id', $issue->id)->delete();
+            // Keep timeline stable: update existing ledger rows in-place (do not delete/recreate).
+            \App\Models\StockLedger::query()
+                ->where('ref_table', 'issues')
+                ->where('ref_id', $issue->id)
+                ->update(['txn_date' => $issue->issue_date]);
 
+            // Ensure every remaining line has a ledger row and stays in sync.
             $issue->load('lines');
             foreach ($issue->lines as $l) {
-                $stock->addIssueLedgerEntry([
-                    'txn_date' => $issue->issue_date,
-                    'ref_id' => $issue->id,
-                    'ref_line_id' => $l->id,
-                    'item_id' => $l->item_id,
-                    'qty_out' => (int)$l->quantity,
-                    'unit_price' => (int)$l->issue_price,
-                    'specification_snapshot' => $l->specification,
-                    'created_by' => $issue->created_by,
-                ]);
+                $ledger = \App\Models\StockLedger::query()
+                    ->where('ref_table', 'issues')
+                    ->where('ref_id', $issue->id)
+                    ->where('ref_line_id', $l->id)
+                    ->first();
+
+                if (!$ledger) {
+                    $stock->addIssueLedgerEntry([
+                        'txn_date' => $issue->issue_date,
+                        'ref_id' => $issue->id,
+                        'ref_line_id' => $l->id,
+                        'item_id' => $l->item_id,
+                        'qty_out' => (int)$l->quantity,
+                        'unit_price' => (int)$l->issue_price,
+                        'specification_snapshot' => $l->specification,
+                        'created_by' => $issue->created_by,
+                    ]);
+                } else {
+                    $ledger->update([
+                        'txn_date' => $issue->issue_date,
+                        'item_id' => $l->item_id,
+                        'qty_out' => (int)$l->quantity,
+                        'unit_price' => (int)$l->issue_price,
+                        'specification_snapshot' => $l->specification,
+                    ]);
+                }
             }
 
             return redirect()->route('issues.show', $issue)->with('status', 'Issue updated successfully.');

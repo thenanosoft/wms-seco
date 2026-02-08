@@ -175,4 +175,115 @@ class PurchaseReturnController extends Controller
             return redirect()->route('returns.purchase.index')->with('status', 'Purchase return saved.');
         });
     }
+
+    public function edit(PurchaseReturnTransaction $purchaseReturnTransaction)
+    {
+        $purchaseReturnTransaction->load(['purchase','lines.purchaseLine.item.group']);
+
+        return view('returns.purchase.edit', [
+            'txn' => $purchaseReturnTransaction,
+            'purchase' => $purchaseReturnTransaction->purchase,
+        ]);
+    }
+
+    public function update(Request $request, PurchaseReturnTransaction $purchaseReturnTransaction, StockService $stock)
+    {
+        $purchaseReturnTransaction->load(['purchase','lines']);
+
+        $data = $request->validate([
+            'return_date' => ['required','date'],
+            'notes' => ['nullable','string','max:255'],
+            'lines' => ['required','array'],
+            'lines.*.id' => ['required','integer','exists:purchase_return_lines,id'],
+            'lines.*.quantity' => ['required','integer','min:0'],
+        ]);
+
+        return DB::transaction(function () use ($purchaseReturnTransaction, $data, $stock) {
+            // 1) Reverse previous return (restore stock + delete ledger)
+            foreach ($purchaseReturnTransaction->lines as $rl) {
+                $pl = \App\Models\PurchaseLine::query()->find($rl->purchase_line_id);
+                if (!$pl) continue;
+                $batch = StockBatch::where('purchase_line_id', $pl->id)->lockForUpdate()->first();
+                if ($batch) {
+                    $batch->qty_available = (int)$batch->qty_available + (int)$rl->quantity;
+                    $batch->save();
+                }
+            }
+            StockLedger::query()->where('ref_table','purchase_return_transactions')->where('ref_id', $purchaseReturnTransaction->id)->delete();
+
+            // 2) Update header
+            $purchaseReturnTransaction->update([
+                'return_date' => $data['return_date'],
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            // 3) Update each line and re-apply stock + ledger
+            $purchaseReturnTransaction->load('lines');
+            foreach ($data['lines'] as $row) {
+                $line = $purchaseReturnTransaction->lines->firstWhere('id', (int)$row['id']);
+                if (!$line) continue;
+                $newQty = (int)$row['quantity'];
+
+                // cannot return more than purchased qty for that purchase line
+                $pl = \App\Models\PurchaseLine::query()->find($line->purchase_line_id);
+                if ($pl) {
+                    $purchased = (int)$pl->quantity;
+                    $already = \App\Models\PurchaseReturnLine::query()
+                        ->where('purchase_line_id', $pl->id)
+                        ->where('id','!=',$line->id)
+                        ->sum('quantity');
+                    if ($newQty + (int)$already > $purchased) {
+                        return back()->withErrors(['lines' => 'Return qty cannot exceed purchased qty.'])->withInput();
+                    }
+                }
+
+                $line->quantity = $newQty;
+                $line->save();
+                if ($newQty <= 0) continue;
+
+                $batch = StockBatch::where('purchase_line_id', $pl?->id)->lockForUpdate()->first();
+                if ($batch) {
+                    $batch->qty_available = max(0, (int)$batch->qty_available - $newQty);
+                    $batch->save();
+                }
+
+                $stock->addPurchaseReturnLedgerEntry([
+                    'txn_date' => $purchaseReturnTransaction->return_date,
+                    'ref_id' => $purchaseReturnTransaction->id,
+                    'ref_line_id' => $line->id,
+                    'item_id' => $pl?->item_id,
+                    'qty_out' => $newQty,
+                    'unit_price' => (int)$pl?->purchase_price,
+                    'specification_snapshot' => $pl?->specification,
+                    'created_by' => $purchaseReturnTransaction->created_by,
+                ]);
+            }
+
+            return redirect()->route('returns.purchase.index')->with('status','Purchase return updated successfully.');
+        });
+    }
+
+    public function destroy(PurchaseReturnTransaction $purchaseReturnTransaction)
+    {
+        $purchaseReturnTransaction->load(['lines.purchaseLine']);
+
+        return DB::transaction(function () use ($purchaseReturnTransaction) {
+            // reverse return (restore stock)
+            foreach ($purchaseReturnTransaction->lines as $rl) {
+                $pl = $rl->purchaseLine;
+                if (!$pl) continue;
+                $batch = StockBatch::where('purchase_line_id', $pl->id)->lockForUpdate()->first();
+                if ($batch) {
+                    $batch->qty_available = (int)$batch->qty_available + (int)$rl->quantity;
+                    $batch->save();
+                }
+            }
+
+            StockLedger::query()->where('ref_table','purchase_return_transactions')->where('ref_id', $purchaseReturnTransaction->id)->delete();
+            \App\Models\PurchaseReturnLine::query()->where('purchase_return_transaction_id', $purchaseReturnTransaction->id)->delete();
+            $purchaseReturnTransaction->delete();
+
+            return redirect()->route('returns.purchase.index')->with('status','Purchase return deleted successfully.');
+        });
+    }
 }

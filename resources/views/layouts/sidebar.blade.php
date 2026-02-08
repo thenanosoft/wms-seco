@@ -1,6 +1,6 @@
 <div class="h-full flex flex-col">
     <div class="px-5 py-4 border-b border-gray-200">
-        <div class="text-base font-semibold leading-tight">{{ config('app.name', 'Warehouse Store Management System') }}</div>
+        <div class="text-base font-semibold leading-tight">{{ config('app.name') }}</div>
         <div class="mt-1 text-xs text-gray-600">
             Offline LAN Inventory
         </div>

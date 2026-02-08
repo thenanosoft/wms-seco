@@ -28,7 +28,7 @@
                     @foreach($issues as $iss)
                         <option value="{{ $iss->id }}" @selected(request('issue_id') == $iss->id)
                             data-search="{{ strtolower(''.$iss->id.' '.$iss->issue_date.' '.($iss->reference_no ?? '').' '.($iss->issued_to ?? '')) }}">
-                            #{{ $iss->id }} | {{ $iss->issue_date }} | {{ $iss->reference_no ?? 'No Ref' }} | {{ $iss->issued_to ?? 'N/A' }}
+                            #{{ $iss->id }} | {{ $iss->issue_date }} {{ optional($iss->created_at)->format('H:i:s') }} | {{ $iss->reference_no ?? 'No Ref' }} | {{ $iss->issued_to ?? 'N/A' }}
                         </option>
                     @endforeach
                 </select>

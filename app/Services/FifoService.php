@@ -9,6 +9,7 @@ use App\Models\PurchaseReturnLine;
 use App\Models\StockBatch;
 use App\Models\StockLedger;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class FifoService
 {
@@ -63,7 +64,7 @@ class FifoService
 
         $consumed = (int)$batch->qty_purchased - (int)$batch->qty_available;
         if ($newPurchasedQty < $consumed) {
-            abort(422, "Cannot reduce purchase quantity below already issued/consumed qty ({$consumed}).");
+            throw ValidationException::withMessages(["quantity" => "Cannot reduce purchase quantity below already issued/consumed qty ({})."]);
         }
 
         $batch->qty_purchased = $newPurchasedQty;

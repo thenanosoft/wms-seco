@@ -7,7 +7,37 @@
             <h1 class="text-2xl font-semibold">Issue Details</h1>
             <p class="text-sm text-gray-600">Issue #{{ $issue->id }} · {{ optional($issue->issue_date)->format('Y-m-d') }}</p>
         </div>
-        <a href="{{ route('issues.index') }}" class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Back</a>
+        <div class="flex items-center gap-2">
+            <a href="{{ route('issues.index') }}" class="rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">Back</a>
+
+            @if(auth()->user()?->role === 'admin')
+                <a href="{{ route('issues.edit', $issue) }}"
+                   class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50"
+                   title="Edit">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                    </svg>
+                </a>
+
+                <form action="{{ route('issues.destroy', $issue) }}" method="POST"
+                      onsubmit="return confirm('Delete this issue? Any returns linked to it will also be deleted.')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit"
+                            class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-red-200 text-red-700 hover:bg-red-50"
+                            title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4">
+                            <path d="M3 6h18" />
+                            <path d="M8 6V4h8v2" />
+                            <path d="M6 6l1 16h10l1-16" />
+                            <path d="M10 11v6" />
+                            <path d="M14 11v6" />
+                        </svg>
+                    </button>
+                </form>
+            @endif
+        </div>
     </div>
 
     <div class="flex flex-wrap gap-2 mb-4">
@@ -38,6 +68,8 @@
                 <tr>
                     <th class="px-4 py-2 text-left">Item</th>
                     <th class="px-4 py-2 text-right">Qty</th>
+                    <th class="px-4 py-2 text-right">Returned</th>
+                    <th class="px-4 py-2 text-right">Remaining</th>
                     <th class="px-4 py-2 text-right">Unit Price</th>
                     <th class="px-4 py-2 text-left">Specification</th>
                     <th class="px-4 py-2 text-right">Line Total</th>
@@ -45,7 +77,11 @@
             </thead>
             <tbody class="divide-y">
                 @foreach(($lines ?? $issue->lines ?? collect()) as $line)
-                
+                    @php
+                        $retQty = (int)($returned[$line->id] ?? 0);
+                        $remQty = (int)$line->quantity - $retQty;
+                        if ($remQty < 0) $remQty = 0;
+                    @endphp
                     <tr>
                         <td class="px-4 py-2">
                             <a href="{{ route('items.stock.show', $line->item_id) }}" class="text-indigo-600 hover:underline">
@@ -53,6 +89,8 @@
                             </a>
                         </td>
                         <td class="px-4 py-2 text-right">{{ (int) $line->quantity }}</td>
+                        <td class="px-4 py-2 text-right">{{ $retQty }}</td>
+                        <td class="px-4 py-2 text-right">{{ $remQty }}</td>
                         <td class="px-4 py-2 text-right">{{ number_format((float) $line->issue_price, 0) }}</td>
                         <td class="px-4 py-2">{{ $line->specification ?: '' }}</td>
                         <td class="px-4 py-2 text-right">{{ number_format((float) $line->line_total, 0) }}</td>
@@ -61,7 +99,7 @@
                 @endforeach
                 @if(($issue->lines ?? collect())->isEmpty())
     <tr>
-        <td colspan="4" class="px-4 py-6 text-center text-gray-500">No items found for this issue.</td>
+        <td colspan="7" class="px-4 py-6 text-center text-gray-500">No items found for this issue.</td>
     </tr>
 @endif
             </tbody>

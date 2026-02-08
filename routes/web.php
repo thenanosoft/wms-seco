@@ -102,6 +102,19 @@ Route::delete('/issues/{issue}', [\App\Http\Controllers\IssueController::class, 
         ->name('returns.issue.store')
         ->middleware(['role:admin,store_helper']);
 
+    Route::get('/returns/issue/{issueReturnTransaction}/edit', [\App\Http\Controllers\IssueReturnController::class,'edit'])
+        ->name('returns.issue.edit')
+        ->whereNumber('issueReturnTransaction')
+        ->middleware(['role:admin,store_helper']);
+    Route::put('/returns/issue/{issueReturnTransaction}', [\App\Http\Controllers\IssueReturnController::class,'update'])
+        ->name('returns.issue.update')
+        ->whereNumber('issueReturnTransaction')
+        ->middleware(['role:admin,store_helper']);
+    Route::delete('/returns/issue/{issueReturnTransaction}', [\App\Http\Controllers\IssueReturnController::class,'destroy'])
+        ->name('returns.issue.destroy')
+        ->whereNumber('issueReturnTransaction')
+        ->middleware(['role:admin,store_helper']);
+
     Route::get('/returns/purchase', [\App\Http\Controllers\PurchaseReturnController::class,'index'])
         ->name('returns.purchase.index')
         ->middleware(['role:admin']);
@@ -111,6 +124,20 @@ Route::delete('/issues/{issue}', [\App\Http\Controllers\IssueController::class, 
     Route::post('/returns/purchase', [\App\Http\Controllers\PurchaseReturnController::class,'store'])
         ->name('returns.purchase.store')
         ->middleware(['role:admin']);
+
+    Route::get('/returns/purchase/{purchaseReturnTransaction}/edit', [\App\Http\Controllers\PurchaseReturnController::class,'edit'])
+        ->name('returns.purchase.edit')
+        ->whereNumber('purchaseReturnTransaction')
+        ->middleware(['role:admin']);
+    Route::put('/returns/purchase/{purchaseReturnTransaction}', [\App\Http\Controllers\PurchaseReturnController::class,'update'])
+        ->name('returns.purchase.update')
+        ->whereNumber('purchaseReturnTransaction')
+        ->middleware(['role:admin']);
+    Route::delete('/returns/purchase/{purchaseReturnTransaction}', [\App\Http\Controllers\PurchaseReturnController::class,'destroy'])
+        ->name('returns.purchase.destroy')
+        ->whereNumber('purchaseReturnTransaction')
+        ->middleware(['role:admin']);
+
 
     Route::get('/settings', [\App\Http\Controllers\SettingsController::class, 'index'])
     ->name('settings.index')
@@ -215,7 +242,6 @@ Route::get('/export/item-ledger/{item}.pdf', [\App\Http\Controllers\ExportContro
     // Admin-only test route (keep for verification)
     Route::get('/admin-test', function () {
         return 'Admin OK';
-    })->middleware(['role:admin']);
 });
 
 // Route::get('/dashboard', function () {

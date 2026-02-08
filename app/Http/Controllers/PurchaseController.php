@@ -85,7 +85,8 @@ class PurchaseController extends Controller
 
             foreach ($validated['lines'] as $line) {
                 $qty = (int)$line['quantity'];
-                $price = ($line['purchase_price'] === null || $line['purchase_price'] === '') ? null : (int)$line['purchase_price'];
+                $rawPrice = $line['purchase_price'] ?? null;
+                $price = ($rawPrice === null || $rawPrice === '' || (is_numeric($rawPrice) && (float)$rawPrice <= 0)) ? null : (int)$rawPrice;
                 $total = $price !== null ? ($qty * $price) : 0;
 
                 $purchaseLine = PurchaseLine::create([
@@ -152,106 +153,120 @@ class PurchaseController extends Controller
             'lines.*.group_id' => ['required','integer','exists:groups,id'],
             'lines.*.item_id' => ['required','integer','exists:items,id'],
             'lines.*.specification' => ['nullable','string','max:2000'],
-            'lines.*.purchase_price' => ['nullable','integer','min:0'],
+            // 0 or empty means pending
+            'lines.*.purchase_price' => ['nullable','numeric','min:0'],
             'lines.*.quantity' => ['required','integer','min:1'],
         ]);
 
-        return DB::transaction(function () use ($data, $purchase, $stock, $fifo) {
-            $purchase->update([
-                'purchase_date' => $data['purchase_date'],
-                'supplier_name' => $data['supplier_name'] ?? null,
-                'reference_no' => $data['reference_no'] ?? null,
-                'notes' => $data['notes'] ?? null,
-            ]);
+        try {
+            return \DB::transaction(function () use ($data, $purchase, $stock, $fifo) {
+                $purchase->update([
+                    'purchase_date' => $data['purchase_date'],
+                    'supplier_name' => $data['supplier_name'] ?? null,
+                    'reference_no' => $data['reference_no'] ?? null,
+                    'notes' => $data['notes'] ?? null,
+                ]);
 
-            $existingLines = $purchase->lines()->get()->keyBy('id');
+                $existingLines = $purchase->lines()->get()->keyBy('id');
 
-            foreach ($data['lines'] as $row) {
-                $lineId = $row['id'] ?? null;
-                $qty = (int)$row['quantity'];
-                $price = ($row['purchase_price'] === null || $row['purchase_price'] === '') ? null : (int)$row['purchase_price'];
+                foreach ($data['lines'] as $row) {
+                    $lineId = $row['id'] ?? null;
+                    $qty = (int)$row['quantity'];
 
-                if ($lineId) {
-                    /** @var PurchaseLine $line */
-                    $line = $existingLines->get((int)$lineId);
-                    if (!$line) abort(422, 'Invalid purchase line.');
+                    $rawPrice = $row['purchase_price'] ?? null;
+                    $price = ($rawPrice === null || $rawPrice === '' || (is_numeric($rawPrice) && (float)$rawPrice <= 0)) ? null : (int)$rawPrice;
 
-                    $batch = StockBatch::query()->where('purchase_line_id', $line->id)->lockForUpdate()->first();
-                    if (!$batch) {
-                        $batch = $fifo->createBatchFromPurchaseLine($line, $purchase->purchase_date->format('Y-m-d'));
+                    if ($lineId) {
+                        /** @var \App\Models\PurchaseLine $line */
+                        $line = $existingLines->get((int)$lineId);
+                        if (!$line) {
+                            throw \Illuminate\Validation\ValidationException::withMessages(['lines' => 'Invalid purchase line.']);
+                        }
+
+                        $batch = \App\Models\StockBatch::query()
+                            ->where('purchase_line_id', $line->id)
+                            ->lockForUpdate()
+                            ->first();
+
+                        if (!$batch) {
+                            $batch = $fifo->createBatchFromPurchaseLine($line, $purchase->purchase_date->format('Y-m-d'));
+                        }
+
+                        // Quantity protection (cannot reduce below consumed)
+                        $fifo->updateBatchQuantityFromPurchaseLine($batch, $qty);
+
+                        $newItemId = (int)$row['item_id'];
+                        $consumed = (int)$batch->qty_purchased - (int)$batch->qty_available;
+                        if ($newItemId !== (int)$line->item_id && $consumed > 0) {
+                            throw \Illuminate\Validation\ValidationException::withMessages([
+                                'lines' => 'Cannot change item on a purchase line that already has issued/consumed stock.',
+                            ]);
+                        }
+
+                        $line->item_id = $newItemId;
+                        $line->specification = $row['specification'] ?? null;
+                        $line->quantity = $qty;
+                        $line->purchase_price = $price; // mutator will set null for 0/empty
+                        $line->line_total = $price !== null ? ($qty * $price) : 0;
+                        $line->save();
+
+                        // Update batch meta
+                        $batch->purchase_date = $purchase->purchase_date->format('Y-m-d');
+                        $batch->item_id = $line->item_id;
+                        $batch->specification = $line->specification;
+                        $batch->save();
+
+                        // Update ledger purchase qty and snapshot
+                        $purchaseLedger = \App\Models\StockLedger::query()
+                            ->where('ref_table','purchases')
+                            ->where('ref_line_id', $line->id)
+                            ->lockForUpdate()
+                            ->first();
+
+                        if ($purchaseLedger) {
+                            $purchaseLedger->txn_date = $purchase->purchase_date;
+                            $purchaseLedger->qty_in = $qty;
+                            $purchaseLedger->specification_snapshot = $line->specification;
+                            $purchaseLedger->unit_price = $price !== null ? $price : 0;
+                            $purchaseLedger->save();
+                        }
+
+                        // Propagate price to issued + return records (only if confirmed)
+                        if ($price !== null) {
+                            $fifo->propagateBatchPrice($line->id, $price);
+                        }
+                    } else {
+                        // Add new item later to same purchase
+                        $total = $price !== null ? ($qty * $price) : 0;
+                        $newLine = \App\Models\PurchaseLine::create([
+                            'purchase_id' => $purchase->id,
+                            'item_id' => (int)$row['item_id'],
+                            'specification' => $row['specification'] ?? null,
+                            'purchase_price' => $price,
+                            'quantity' => $qty,
+                            'line_total' => $total,
+                        ]);
+
+                        $fifo->createBatchFromPurchaseLine($newLine, $purchase->purchase_date->format('Y-m-d'));
+
+                        $stock->addPurchaseLedgerEntry([
+                            'txn_date' => $purchase->purchase_date,
+                            'ref_id' => $purchase->id,
+                            'ref_line_id' => $newLine->id,
+                            'item_id' => (int)$row['item_id'],
+                            'qty_in' => $qty,
+                            'unit_price' => $price !== null ? $price : 0,
+                            'specification_snapshot' => $row['specification'] ?? null,
+                            'created_by' => auth()->id(),
+                        ]);
                     }
-
-                    // Quantity protection (cannot reduce below consumed)
-                    $fifo->updateBatchQuantityFromPurchaseLine($batch, $qty);
-
-                    $newItemId = (int)$row['item_id'];
-                    $consumed = (int)$batch->qty_purchased - (int)$batch->qty_available;
-                    if ($newItemId !== (int)$line->item_id && $consumed > 0) {
-                        abort(422, 'Cannot change item on a purchase line that already has issued/consumed stock.');
-                    }
-
-                    $line->item_id = $newItemId;
-                    $line->specification = $row['specification'] ?? null;
-                    $line->quantity = $qty;
-                    $line->purchase_price = $price;
-                    $line->line_total = $price !== null ? ($qty * $price) : 0;
-                    $line->save();
-
-                    // Update batch meta
-                    $batch->purchase_date = $purchase->purchase_date->format('Y-m-d');
-                    $batch->item_id = $line->item_id;
-                    $batch->specification = $line->specification;
-                    // unit_price updated below via propagate
-                    $batch->save();
-
-                    // Update ledger purchase qty and snapshot
-                    $purchaseLedger = StockLedger::query()
-                        ->where('ref_table','purchases')
-                        ->where('ref_line_id', $line->id)
-                        ->lockForUpdate()
-                        ->first();
-
-                    if ($purchaseLedger) {
-                        $purchaseLedger->txn_date = $purchase->purchase_date;
-                        $purchaseLedger->qty_in = $qty;
-                        $purchaseLedger->specification_snapshot = $line->specification;
-                        $purchaseLedger->unit_price = $price !== null ? $price : 0;
-                        $purchaseLedger->save();
-                    }
-
-                    // Propagate price to issued + return records
-                    if ($price !== null) {
-                        $fifo->propagateBatchPrice($line->id, $price);
-                    }
-                } else {
-                    // Add new item later to same purchase
-                    $total = $price !== null ? ($qty * $price) : 0;
-                    $newLine = PurchaseLine::create([
-                        'purchase_id' => $purchase->id,
-                        'item_id' => (int)$row['item_id'],
-                        'specification' => $row['specification'] ?? null,
-                        'purchase_price' => $price,
-                        'quantity' => $qty,
-                        'line_total' => $total,
-                    ]);
-
-                    $fifo->createBatchFromPurchaseLine($newLine, $purchase->purchase_date->format('Y-m-d'));
-
-                    $stock->addPurchaseLedgerEntry([
-                        'txn_date' => $purchase->purchase_date,
-                        'ref_id' => $purchase->id,
-                        'ref_line_id' => $newLine->id,
-                        'item_id' => (int)$row['item_id'],
-                        'qty_in' => $qty,
-                        'unit_price' => $price !== null ? $price : 0,
-                        'specification_snapshot' => $row['specification'] ?? null,
-                        'created_by' => auth()->id(),
-                    ]);
                 }
-            }
 
-            return redirect()->route('purchases.show', $purchase)->with('status', 'Purchase updated successfully.');
-        });
+                return redirect()->route('purchases.show', $purchase)->with('status', 'Purchase updated successfully.');
+            });
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            return back()->withErrors(['purchase' => $e->getMessage()])->withInput();
+        }
     }
 
     public function destroy(Purchase $purchase)

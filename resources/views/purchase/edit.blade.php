@@ -70,10 +70,38 @@
                         <template x-for="(line, idx) in lines" :key="line.key">
                             <tr>
                                 <td class="px-3 py-2">
-                                    <div class="text-sm font-semibold" x-text="line.item_label"></div>
                                     <input type="hidden" :name="`lines[${idx}][id]`" :value="line.id">
-                                    <input type="hidden" :name="`lines[${idx}][group_id]`" :value="line.group_id">
-                                    <input type="hidden" :name="`lines[${idx}][item_id]`" :value="line.item_id">
+
+                                    <template x-if="line.id">
+                                        <div>
+                                            <div class="text-sm font-semibold" x-text="line.item_label"></div>
+                                            <input type="hidden" :name="`lines[${idx}][group_id]`" :value="line.group_id">
+                                            <input type="hidden" :name="`lines[${idx}][item_id]`" :value="line.item_id">
+                                        </div>
+                                    </template>
+
+                                    <template x-if="!line.id">
+                                        <div class="flex flex-col gap-2 sm:flex-row">
+                                            <select class="w-44 rounded-lg border-gray-200"
+                                                    :name="`lines[${idx}][group_id]`"
+                                                    x-model="line.group_id"
+                                                    @change="line.item_id=''; line.item_label=''">
+                                                <option value="">Select group</option>
+                                                <template x-for="g in groups" :key="g.id">
+                                                    <option :value="g.id" x-text="g.group_code"></option>
+                                                </template>
+                                            </select>
+                                            <select class="w-72 rounded-lg border-gray-200"
+                                                    :name="`lines[${idx}][item_id]`"
+                                                    x-model="line.item_id"
+                                                    @change="setLabel(idx)">
+                                                <option value="">Select item</option>
+                                                <template x-for="it in filteredItems(line.group_id)" :key="it.id">
+                                                    <option :value="it.id" x-text="`${it.item_code} - ${it.name}`"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                    </template>
                                 </td>
                                 <td class="px-3 py-2">
                                     <input type="text" class="w-72 rounded-lg border-gray-200" :name="`lines[${idx}][specification]`" x-model="line.specification" placeholder="Optional">
@@ -127,30 +155,30 @@ function purchaseEditForm({ existingLines, groups, items }) {
         },
 
         addNewLine() {
-            // When adding a new line, we ask the admin to pick item via prompt for now.
-            // (Keep UI simple and stable)
-            const code = prompt('Enter item code (exact)');
-            if (!code) return;
-            const it = this.items.find(x => String(x.item_code).toLowerCase() === String(code).toLowerCase());
-            if (!it) {
-                alert('Item not found. Please check item code.');
-                return;
-            }
-            const duplicate = this.lines.some(l => String(l.item_id) === String(it.id));
-            if (duplicate) {
-                alert('This item already exists in this purchase lines.');
-                return;
-            }
             this.lines.push({
                 key: Date.now() + Math.random(),
                 id: null,
-                group_id: it.group_id,
-                item_id: it.id,
-                item_label: `${it.item_code} - ${it.name}`,
-                specification: it.default_spec || '',
+                group_id: '',
+                item_id: '',
+                item_label: '',
+                specification: '',
                 purchase_price: '',
                 quantity: 1,
             });
+        },
+
+        filteredItems(groupId) {
+            if (!groupId) return [];
+            return this.items.filter(it => String(it.group_id) === String(groupId));
+        },
+
+        setLabel(idx) {
+            const line = this.lines[idx];
+            const it = this.items.find(x => String(x.id) === String(line.item_id));
+            if (it) {
+                line.item_label = `${it.item_code} - ${it.name}`;
+                if (!line.specification && it.default_spec) line.specification = it.default_spec;
+            }
         },
 
         removeLine(idx) {

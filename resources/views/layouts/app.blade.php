@@ -48,19 +48,9 @@
     <footer class="mt-10 border-t text-center bg-white">
     <div class="max-w text-center px-4 py-3 text-md text-gray-600">
         <div>
-            © {{ date('Y') }} {{ config('app.name', 'Warehouse Store Management System') }} - Designed by Farhan Ellahi Owned by Nanosoft
+            © {{ date('Y') }} {{ config('app.name') }} - Designed by Farhan Ellahi Owned by Nanosoft
         </div>
     </div>
 </footer>
 
-</body>
-<script>
-document.addEventListener('visibilitychange', function () {
-  if (!document.hidden) {
-    // when user comes back to tab, refresh
-    window.location.reload();
-  }
-});
-</script>
-
-</html>
+</body></html>
