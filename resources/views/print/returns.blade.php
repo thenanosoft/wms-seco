@@ -3,18 +3,7 @@
 <head>
     <meta charset="utf-8">
     <title>Returns Print</title>
-    <style>
-        body { font-family: Arial, sans-serif; font-size: 12px; color: #111; }
-        .report-header { text-align: center; margin: 0 0 12px; }
-        .report-header .company { font-size: 16px; font-weight: 700; }
-        .report-header .title { font-size: 13px; font-weight: 700; margin-top: 6px; }
-        .report-header .meta { font-size: 11px; margin-top: 2px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 6px; }
-        th { background: #f3f3f3; text-align: left; }
-        .right { text-align: right; }
-        @media print { .no-print { display: none; } }
-    </style>
+    @include('partials.report_theme_print')
 </head>
 <body>
     <div class="no-print" style="margin-bottom:10px;">
@@ -26,13 +15,13 @@
     <table>
         <thead>
         <tr>
-            <th>Date</th>
-            <th>Type</th>
-            <th>Group</th>
-            <th>Item</th>
-            <th class="right">Qty</th>
-            <th class="right">Price</th>
-            <th class="right">Total</th>
+            <th class="w-10 nowrap">Date</th>
+            <th class="w-12">Type</th>
+            <th class="w-8">Group</th>
+            <th class="w-30">Item</th>
+            <th class="w-8 right nowrap">Qty</th>
+            <th class="w-8 right nowrap">Price</th>
+            <th class="w-10 right nowrap">Total</th>
             <th>Party</th>
             <th>Ref</th>
         </tr>

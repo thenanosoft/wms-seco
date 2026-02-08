@@ -3,18 +3,7 @@
 <head>
     <meta charset="utf-8">
     <title>Stock Print</title>
-    <style>
-        body { font-family: Arial, sans-serif; font-size: 12px; color: #111; }
-        .report-header { text-align: center; margin: 0 0 12px; }
-        .report-header .company { font-size: 16px; font-weight: 700; }
-        .report-header .title { font-size: 13px; font-weight: 700; margin-top: 6px; }
-        .report-header .meta { font-size: 11px; margin-top: 2px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 6px; }
-        th { background: #f3f3f3; text-align: left; }
-        .right { text-align: right; }
-        @media print { .no-print { display: none; } }
-    </style>
+    @include('partials.report_theme_print')
 </head>
 <body>
     <div class="no-print" style="margin-bottom:10px;">
@@ -26,11 +15,11 @@
     <table>
         <thead>
         <tr>
-            <th>Group</th>
-            <th>Item</th>
-            <th class="right">Total In</th>
-            <th class="right">Total Out</th>
-            <th class="right">Balance</th>
+            <th class="w-10">Group</th>
+            <th class="w-40">Item</th>
+            <th class="w-15 right nowrap">Total In</th>
+            <th class="w-15 right nowrap">Total Out</th>
+            <th class="w-15 right nowrap">Balance</th>
         </tr>
         </thead>
         <tbody>

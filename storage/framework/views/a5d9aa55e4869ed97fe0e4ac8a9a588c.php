@@ -3,31 +3,21 @@
 <head>
     <meta charset="utf-8">
     <title>Purchases PDF</title>
-    <style>
-        body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 10px; color: #111; }
-        .report-header { text-align: center; margin: 0 0 12px; }
-        .report-header .company { font-size: 16px; font-weight: 700; }
-        .report-header .title { font-size: 12px; font-weight: 700; margin-top: 6px; }
-        .report-header .meta { font-size: 10px; margin-top: 2px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 5px; }
-        th { background: #f3f3f3; text-align: left; }
-        .right { text-align: right; }
-    </style>
+    <?php echo $__env->make('partials.report_theme_pdf', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 </head>
 <body>
     <?php echo $__env->make('partials.report_header', ['title' => 'Purchase Items'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
     <table>
         <thead>
         <tr>
-            <th>Date</th>
-            <th>Supplier</th>
-            <th>Group</th>
-            <th>Item</th>
-            <th>Spec</th>
-            <th class="right">Qty In</th>
-            <th class="right">Price</th>
-            <th class="right">Total</th>
+            <th class="w-10 nowrap">Date</th>
+            <th class="w-15">Supplier</th>
+            <th class="w-8">Group</th>
+            <th class="w-25">Item</th>
+            <th class="w-15">Spec</th>
+            <th class="w-8 right nowrap">Qty In</th>
+            <th class="w-8 right nowrap">Price</th>
+            <th class="w-10 right nowrap">Total</th>
         </tr>
         </thead>
         <tbody>

@@ -8,7 +8,10 @@
 
 <div class="report-header">
     <div class="company">{{ $storeName ?? config('app.name') }}</div>
+    @if(!empty($title))
+        <div class="title">{{ $title }}</div>
+    @endif
     <div class="meta">{{ $printedAt }}</div>
     <div class="meta">Printed By: {{ $roleLabel }}{{ $username ? ' - ' . $username : '' }}</div>
-    <div class="title">{{ $title ?? '' }}</div>
 </div>
+<div class="report-divider"></div>

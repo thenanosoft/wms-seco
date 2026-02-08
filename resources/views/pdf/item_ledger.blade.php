@@ -3,29 +3,7 @@
 <head>
     <meta charset="utf-8">
     <title>Item Ledger PDF</title>
-    <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 10px; color:#111; }
-        .report-header { text-align: center; margin: 0 0 12px; }
-        .report-header .company { font-size: 16px; font-weight: 700; }
-        .report-header .title { font-size: 12px; font-weight: 700; margin-top: 6px; }
-        .report-header .meta { font-size: 10px; margin-top: 2px; }
-
-        .sub { margin: 6px 0 0; color:#444; text-align:center; }
-        .muted { color:#666; }
-
-        table { width:100%; border-collapse: collapse; margin-top:10px; }
-        th, td { border:1px solid #ddd; padding:5px 6px; vertical-align: top; }
-        th { background:#f4f4f4; text-align:left; }
-        .right { text-align:right; }
-
-        .badge { padding:2px 6px; border-radius: 10px; font-size: 9px; border:1px solid #ddd; display:inline-block; }
-        .b-in { background:#ecfdf5; color:#047857; border-color:#a7f3d0; }
-        .b-out { background:#fff1f2; color:#9f1239; border-color:#fecdd3; }
-        .b-neutral { background:#f8fafc; color:#334155; border-color:#e2e8f0; }
-
-        .totals { margin-top: 10px; text-align:center; }
-        .totals .box { display:inline-block; margin:0 6px; padding:6px 10px; border:1px solid #ddd; border-radius:6px; background:#fafafa; }
-    </style>
+    @include('partials.report_theme_pdf')
 </head>
 <body>
 
@@ -66,13 +44,13 @@
 <table>
     <thead>
     <tr>
-        <th style="width:110px;">Date</th>
-        <th style="width:130px;">Type</th>
-        <th class="right" style="width:70px;">Qty In</th>
-        <th class="right" style="width:70px;">Qty Out</th>
-        <th class="right" style="width:90px;">Unit Price</th>
-        <th style="width:130px;">Ref</th>
-        <th>Notes</th>
+        <th class="w-12 nowrap">Date</th>
+        <th class="w-12">Type</th>
+        <th class="w-8 right nowrap">Qty In</th>
+        <th class="w-8 right nowrap">Qty Out</th>
+        <th class="w-10 right nowrap">Unit Price</th>
+        <th class="w-12 nowrap">Ref</th>
+        <th class="w-30">Notes</th>
     </tr>
     </thead>
     <tbody>
