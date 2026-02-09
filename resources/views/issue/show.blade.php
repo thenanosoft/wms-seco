@@ -76,32 +76,41 @@
                 </tr>
             </thead>
             <tbody class="divide-y">
-                @foreach(($lines ?? $issue->lines ?? collect()) as $line)
-                    @php
-                        $retQty = (int)($returned[$line->id] ?? 0);
-                        $remQty = (int)$line->quantity - $retQty;
-                        if ($remQty < 0) $remQty = 0;
-                    @endphp
+                @forelse(($lines ?? collect()) as $line)
                     <tr>
                         <td class="px-4 py-2">
                             <a href="{{ route('items.stock.show', $line->item_id) }}" class="text-indigo-600 hover:underline">
-                                {{ optional($line->item)->item_code }} - {{ optional($line->item)->name }}
+                                {{ $line->item_code }} - {{ $line->item_name }}
                             </a>
                         </td>
-                        <td class="px-4 py-2 text-right">{{ (int) $line->quantity }}</td>
-                        <td class="px-4 py-2 text-right">{{ $retQty }}</td>
-                        <td class="px-4 py-2 text-right">{{ $remQty }}</td>
-                        <td class="px-4 py-2 text-right">{{ number_format((float) $line->issue_price, 0) }}</td>
+                        <td class="px-4 py-2 text-right">{{ (int)$line->quantity }}</td>
+                        <td class="px-4 py-2 text-right">{{ (int)$line->returned_qty }}</td>
+                        <td class="px-4 py-2 text-right">{{ (int)$line->remaining_qty }}</td>
+                        <td class="px-4 py-2 text-right">
+                            @if($line->issue_price === null)
+                                <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Pending</span>
+                            @else
+                                {{ number_format((float)$line->issue_price, 0) }}
+                            @endif
+                        </td>
                         <td class="px-4 py-2">{{ $line->specification ?: '' }}</td>
-                        <td class="px-4 py-2 text-right">{{ number_format((float) $line->line_total, 0) }}</td>
-
+                        <td class="px-4 py-2 text-right">{{ number_format((float)$line->net_line_total, 0) }}</td>
                     </tr>
-                @endforeach
-                @if(($issue->lines ?? collect())->isEmpty())
-    <tr>
-        <td colspan="7" class="px-4 py-6 text-center text-gray-500">No items found for this issue.</td>
-    </tr>
-@endif
+                @empty
+                    <tr>
+                        <td colspan="7" class="px-4 py-6 text-center text-gray-500">No items found for this issue.</td>
+                    </tr>
+                @endforelse
+
+                <tr class="bg-gray-50 font-semibold">
+                    <td class="px-4 py-2 text-right">Totals</td>
+                    <td class="px-4 py-2 text-right">{{ number_format((int)($totals->total_qty ?? 0), 0) }}</td>
+                    <td class="px-4 py-2 text-right">{{ number_format((int)($totals->total_returned ?? 0), 0) }}</td>
+                    <td class="px-4 py-2 text-right">{{ number_format((int)($totals->total_remaining ?? 0), 0) }}</td>
+                    <td class="px-4 py-2"></td>
+                    <td class="px-4 py-2"></td>
+                    <td class="px-4 py-2 text-right">{{ number_format((int)($totals->total_net_amount ?? 0), 0) }}</td>
+                </tr>
             </tbody>
         </table>
     </div>

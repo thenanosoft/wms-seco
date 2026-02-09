@@ -123,14 +123,14 @@ class IssueReturnController extends Controller
                 /** @var IssueLine|null $issueLine */
                 $issueLine = $issueLinesById->get($lineId);
                 if (!$issueLine) {
-                    abort(422, 'Invalid issue line selected.');
+                    return back()->withErrors(['lines' => 'Invalid issue line selected.'])->withInput();
                 }
 
                 $alreadyReturned = (int) IssueReturnLine::query()->where('issue_line_id', $issueLine->id)->sum('quantity');
                 $remaining = max(0, (int)$issueLine->quantity - $alreadyReturned);
 
                 if ($qty > $remaining) {
-                    abort(422, "Return qty cannot exceed remaining issued qty (Remaining: {$remaining}).");
+                    return back()->withErrors(['lines' => "Return qty cannot exceed remaining issued qty (Remaining: {$remaining})."])->withInput();
                 }
 
                 $lineTotal = ((int)$issueLine->issue_price) * $qty;

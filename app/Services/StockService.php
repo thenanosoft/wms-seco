@@ -210,7 +210,7 @@ public function stockSummaryWithLowFlag(): array
         }
 
         $pending = $batch->unit_price === null;
-        return ['price' => $pending ? 0 : (float)$batch->unit_price, 'pending' => $pending];
+        return ['price' => $pending ? null : (float)$batch->unit_price, 'pending' => $pending];
     }
 
 
@@ -257,8 +257,8 @@ public function stockSummaryWithLowFlag(): array
             }
             $batch->save();
 
-            $price = $batch->unit_price === null ? 0 : (float) $batch->unit_price;
-            $lineTotal = (float) ($take * $price);
+            $price = $batch->unit_price === null ? null : (float)$batch->unit_price;
+            $lineTotal = $price === null ? 0 : (float)($take * $price);
 
             $issueLine = IssueLine::create([
                 'issue_id' => $issue->id,

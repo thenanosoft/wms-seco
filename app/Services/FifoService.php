@@ -22,7 +22,7 @@ class FifoService
             'specification' => $line->specification,
             'qty_purchased' => (int)$line->quantity,
             'qty_available' => (int)$line->quantity,
-            'unit_price' => $line->purchase_price === null ? null : (int)$line->purchase_price,
+            'unit_price' => $line->purchase_price,
         ]);
     }
 
@@ -64,7 +64,7 @@ class FifoService
 
         $consumed = (int)$batch->qty_purchased - (int)$batch->qty_available;
         if ($newPurchasedQty < $consumed) {
-            throw ValidationException::withMessages(["quantity" => "Cannot reduce purchase quantity below already issued/consumed qty ({})."]);
+            throw ValidationException::withMessages(["quantity" => "Cannot reduce purchase quantity below already issued/consumed qty ({$consumed})."]);
         }
 
         $batch->qty_purchased = $newPurchasedQty;
@@ -75,7 +75,7 @@ class FifoService
     /**
      * When purchase price is confirmed/changed, propagate to all dependent records.
      */
-    public function propagateBatchPrice(int $purchaseLineId, int $newUnitPrice): void
+    public function propagateBatchPrice(int $purchaseLineId, ?int $newUnitPrice): void
     {
         DB::transaction(function () use ($purchaseLineId, $newUnitPrice) {
             // Batch price
@@ -87,7 +87,7 @@ class FifoService
             $pl = PurchaseLine::query()->where('id', $purchaseLineId)->lockForUpdate()->first();
             if ($pl) {
                 $pl->purchase_price = $newUnitPrice;
-                $pl->line_total = (int)$pl->quantity * $newUnitPrice;
+                $pl->line_total = $newUnitPrice === null ? 0 : ((int)$pl->quantity * $newUnitPrice);
                 $pl->save();
             }
 
@@ -105,7 +105,7 @@ class FifoService
 
             foreach ($issueLines as $il) {
                 $il->issue_price = $newUnitPrice;
-                $il->line_total = (int)$il->quantity * $newUnitPrice;
+                $il->line_total = $newUnitPrice === null ? 0 : ((int)$il->quantity * $newUnitPrice);
                 $il->save();
 
                 StockLedger::query()
@@ -121,7 +121,7 @@ class FifoService
                 ->get();
             foreach ($issueReturnLines as $irl) {
                 $irl->issue_price = $newUnitPrice;
-                $irl->line_total = (int)$irl->quantity * $newUnitPrice;
+                $irl->line_total = $newUnitPrice === null ? 0 : ((int)$irl->quantity * $newUnitPrice);
                 $irl->save();
 
                 StockLedger::query()
@@ -138,7 +138,7 @@ class FifoService
                 ->get();
             foreach ($purchaseReturnLines as $prl) {
                 $prl->purchase_price = $newUnitPrice;
-                $prl->line_total = (int)$prl->quantity * $newUnitPrice;
+                $prl->line_total = $newUnitPrice === null ? 0 : ((int)$prl->quantity * $newUnitPrice);
                 $prl->save();
 
                 StockLedger::query()

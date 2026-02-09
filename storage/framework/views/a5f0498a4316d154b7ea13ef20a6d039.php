@@ -100,6 +100,19 @@
                         FIFO Valuation
                     </a>
 
+                    <a href="<?php echo e(route('reports.balance.index')); ?>"
+                       class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium
+                       <?php echo e(request()->routeIs('reports.balance.*') ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'); ?>">
+                        <svg class="h-5 w-5 flex-none opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path d="M4 19V5" />
+                            <path d="M4 19h16" />
+                            <path d="M8 15V9" />
+                            <path d="M12 17V7" />
+                            <path d="M16 13v-2" />
+                        </svg>
+                        Balance Report
+                    </a>
+
                     <a href="<?php echo e(route('purchases.items.index')); ?>"
                        class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium
                        <?php echo e(request()->routeIs('purchases.items.*') ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'); ?>">

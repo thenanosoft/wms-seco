@@ -154,6 +154,20 @@ Route::delete('/issues/{issue}', [\App\Http\Controllers\IssueController::class, 
         ->name('reports.valuation.index')
         ->middleware(['auth','role:admin']);
 
+    // Industry Balance Report (item-wise)
+    Route::get('/reports/balance', [\App\Http\Controllers\BalanceReportController::class, 'index'])
+        ->name('reports.balance.index')
+        ->middleware(['auth','role:admin']);
+    Route::get('/reports/balance.csv', [\App\Http\Controllers\BalanceReportController::class, 'csv'])
+        ->name('reports.balance.csv')
+        ->middleware(['auth','role:admin']);
+    Route::get('/reports/balance.xls', [\App\Http\Controllers\BalanceReportController::class, 'xls'])
+        ->name('reports.balance.xls')
+        ->middleware(['auth','role:admin']);
+    Route::get('/reports/balance.pdf', [\App\Http\Controllers\BalanceReportController::class, 'pdf'])
+        ->name('reports.balance.pdf')
+        ->middleware(['auth','role:admin']);
+
     Route::get('/imports/samples/{type}.csv', [\App\Http\Controllers\ImportController::class, 'downloadSample'])
         ->name('imports.samples')
         ->middleware(['auth','role:admin']);

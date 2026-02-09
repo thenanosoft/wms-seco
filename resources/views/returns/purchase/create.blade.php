@@ -19,14 +19,19 @@
     @endif
 
     <form method="GET" action="{{ route('returns.purchase.create') }}" class="rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+            <div>
+                <label class="text-sm font-medium">Search (Ref / Supplier / ID)</label>
+                <input type="text" name="q" value="{{ request('q') }}" class="mt-1 w-full rounded-lg border-gray-200" placeholder="e.g. P-102 or ABC Supplier or 15">
+            </div>
+
             <div>
                 <label class="text-sm font-medium">Select Purchase</label>
                 <select name="purchase_id" class="mt-1 w-full rounded-lg border-gray-200" required>
                     <option value="">Select</option>
                     @foreach($purchases as $p)
                         <option value="{{ $p->id }}" @selected(request('purchase_id') == $p->id)>
-                            {{ $p->purchase_date }} {{ optional($p->created_at)->format('H:i:s') }} | {{ $p->group_code ?? 'Group' }} | {{ $p->reference_no ?? 'No Ref' }}
+                            {{ optional($p->purchase_date)->format('Y-m-d') }} {{ optional($p->created_at)->format('H:i:s') }} | {{ $p->group_code ?? 'Group' }} | {{ $p->reference_no ?? 'No Ref' }}
                         </option>
                     @endforeach
                 </select>

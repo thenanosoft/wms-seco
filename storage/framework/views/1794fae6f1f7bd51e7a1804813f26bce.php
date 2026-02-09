@@ -74,33 +74,43 @@
                 </tr>
             </thead>
             <tbody class="divide-y">
-                <?php $__currentLoopData = ($lines ?? $issue->lines ?? collect()); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $line): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                    <?php
-                        $retQty = (int)($returned[$line->id] ?? 0);
-                        $remQty = (int)$line->quantity - $retQty;
-                        if ($remQty < 0) $remQty = 0;
-                    ?>
+                <?php $__empty_1 = true; $__currentLoopData = ($lines ?? collect()); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $line): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                     <tr>
                         <td class="px-4 py-2">
                             <a href="<?php echo e(route('items.stock.show', $line->item_id)); ?>" class="text-indigo-600 hover:underline">
-                                <?php echo e(optional($line->item)->item_code); ?> - <?php echo e(optional($line->item)->name); ?>
+                                <?php echo e($line->item_code); ?> - <?php echo e($line->item_name); ?>
 
                             </a>
                         </td>
-                        <td class="px-4 py-2 text-right"><?php echo e((int) $line->quantity); ?></td>
-                        <td class="px-4 py-2 text-right"><?php echo e($retQty); ?></td>
-                        <td class="px-4 py-2 text-right"><?php echo e($remQty); ?></td>
-                        <td class="px-4 py-2 text-right"><?php echo e(number_format((float) $line->issue_price, 0)); ?></td>
-                        <td class="px-4 py-2"><?php echo e($line->specification ?: ''); ?></td>
-                        <td class="px-4 py-2 text-right"><?php echo e(number_format((float) $line->line_total, 0)); ?></td>
+                        <td class="px-4 py-2 text-right"><?php echo e((int)$line->quantity); ?></td>
+                        <td class="px-4 py-2 text-right"><?php echo e((int)$line->returned_qty); ?></td>
+                        <td class="px-4 py-2 text-right"><?php echo e((int)$line->remaining_qty); ?></td>
+                        <td class="px-4 py-2 text-right">
+                            <?php if($line->issue_price === null): ?>
+                                <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Pending</span>
+                            <?php else: ?>
+                                <?php echo e(number_format((float)$line->issue_price, 0)); ?>
 
+                            <?php endif; ?>
+                        </td>
+                        <td class="px-4 py-2"><?php echo e($line->specification ?: ''); ?></td>
+                        <td class="px-4 py-2 text-right"><?php echo e(number_format((float)$line->net_line_total, 0)); ?></td>
                     </tr>
-                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                <?php if(($issue->lines ?? collect())->isEmpty()): ?>
-    <tr>
-        <td colspan="7" class="px-4 py-6 text-center text-gray-500">No items found for this issue.</td>
-    </tr>
-<?php endif; ?>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                    <tr>
+                        <td colspan="7" class="px-4 py-6 text-center text-gray-500">No items found for this issue.</td>
+                    </tr>
+                <?php endif; ?>
+
+                <tr class="bg-gray-50 font-semibold">
+                    <td class="px-4 py-2 text-right">Totals</td>
+                    <td class="px-4 py-2 text-right"><?php echo e(number_format((int)($totals->total_qty ?? 0), 0)); ?></td>
+                    <td class="px-4 py-2 text-right"><?php echo e(number_format((int)($totals->total_returned ?? 0), 0)); ?></td>
+                    <td class="px-4 py-2 text-right"><?php echo e(number_format((int)($totals->total_remaining ?? 0), 0)); ?></td>
+                    <td class="px-4 py-2"></td>
+                    <td class="px-4 py-2"></td>
+                    <td class="px-4 py-2 text-right"><?php echo e(number_format((int)($totals->total_net_amount ?? 0), 0)); ?></td>
+                </tr>
             </tbody>
         </table>
     </div>

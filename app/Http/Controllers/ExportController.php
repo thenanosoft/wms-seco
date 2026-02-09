@@ -60,8 +60,7 @@ class ExportController extends Controller
                 'groups.group_code',
                 'groups.group_name',
                 'items.item_code',
-                'items.name as item_name',
-            ])
+                'items.name as item_name',            ])
             ->join('purchases', 'purchases.id', '=', 'purchase_lines.purchase_id')
             ->join('items', 'items.id', '=', 'purchase_lines.item_id')
             ->join('groups', 'groups.id', '=', 'items.group_id')
@@ -88,7 +87,7 @@ class ExportController extends Controller
                 'groups.group_name',
                 'items.item_code',
                 'items.name as item_name',
-            ])
+                \DB::raw('(SELECT COALESCE(SUM(quantity),0) FROM issue_return_lines irl WHERE irl.issue_line_id = issue_lines.id) as returned_qty'),            ])
             ->join('issues', 'issues.id', '=', 'issue_lines.issue_id')
             ->join('items', 'items.id', '=', 'issue_lines.item_id')
             ->join('groups', 'groups.id', '=', 'items.group_id')
@@ -115,8 +114,7 @@ class ExportController extends Controller
             'groups.group_code',
             'groups.group_name',
             'items.item_code',
-            'items.name as item_name',
-        ])
+            'items.name as item_name',        ])
         ->join('return_transactions', 'return_transactions.id', '=', 'return_lines.return_transaction_id')
         ->join('items', 'items.id', '=', 'return_lines.item_id')
         ->join('groups', 'groups.id', '=', 'items.group_id')
@@ -230,10 +228,21 @@ class ExportController extends Controller
             fputcsv($out, []);
 
             fputcsv($out, [
-                'Date','Group Code','Group Name','Item Code','Item Name','Specification','Qty Out','Price','Total','Issued To','Reference'
+                'Date','Group Code','Group Name','Item Code','Item Name','Specification','Qty Out','Returned','Net Qty','Price','Net Total','Issued To','Reference'
             ]);
 
+            $tQty=0; $tRet=0; $tNet=0; $tAmount=0;
             foreach ($rows as $r) {
+                $ret = (int)($r->returned_qty ?? 0);
+                $net = max(0, (int)$r->quantity - $ret);
+                $price = $r->issue_price === null ? null : (float)$r->issue_price;
+                $netTotal = $price === null ? 0 : ($net * $price);
+
+                $tQty += (int)$r->quantity;
+                $tRet += $ret;
+                $tNet += $net;
+                $tAmount += $netTotal;
+
                 fputcsv($out, [
                     $r->issue_date,
                     $r->group_code,
@@ -241,13 +250,19 @@ class ExportController extends Controller
                     $r->item_code,
                     $r->item_name,
                     $r->specification,
-                    $r->quantity,
-                    number_format((float)$r->issue_price, 2, '.', ''),
-                    number_format((float)$r->line_total, 2, '.', ''),
+                    (int)$r->quantity,
+                    $ret,
+                    $net,
+                    $price === null ? 'PENDING' : number_format($price, 2, '.', ''),
+                    number_format($netTotal, 2, '.', ''),
                     $r->issued_to,
                     $r->reference_no,
                 ]);
             }
+
+            // Totals row
+            fputcsv($out, []);
+            fputcsv($out, ['TOTALS','','','','','',$tQty,$tRet,$tNet,'',number_format($tAmount, 2, '.', ''),'','']);
 
             fclose($out);
         };
@@ -386,8 +401,7 @@ class ExportController extends Controller
                 'issue_return_lines.issue_price as unit_price',
                 'groups.group_code',
                 'items.item_code',
-                'items.name as item_name',
-            ])
+                'items.name as item_name',            ])
             ->join('issue_return_transactions','issue_return_transactions.id','=','issue_return_lines.issue_return_transaction_id')
             ->join('issue_lines','issue_lines.id','=','issue_return_lines.issue_line_id')
             ->join('items','items.id','=','issue_return_lines.item_id')
@@ -437,8 +451,7 @@ class ExportController extends Controller
                 'purchase_return_lines.purchase_price as unit_price',
                 'groups.group_code',
                 'items.item_code',
-                'items.name as item_name',
-            ])
+                'items.name as item_name',            ])
             ->join('purchase_return_transactions','purchase_return_transactions.id','=','purchase_return_lines.purchase_return_transaction_id')
             ->join('purchase_lines','purchase_lines.id','=','purchase_return_lines.purchase_line_id')
             ->join('items','items.id','=','purchase_return_lines.item_id')
@@ -555,8 +568,7 @@ public function csvFullHistory(Request $request)
             'groups.group_code',
             'items.id as item_id',
             'items.item_code',
-            'items.name as item_name',
-            'purchases.supplier_name',
+            'items.name as item_name',            'purchases.supplier_name',
             'purchases.reference_no as purchase_ref_no',
             'issues.issued_to',
             'issues.reference_no as issue_ref_no',

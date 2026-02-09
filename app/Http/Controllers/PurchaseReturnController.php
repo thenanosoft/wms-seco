@@ -52,7 +52,20 @@ class PurchaseReturnController extends Controller
 
     public function create(Request $request)
     {
-        $purchases = Purchase::query()->orderByDesc('purchase_date')->limit(500)->get();
+        $purchasesQ = Purchase::query()->orderByDesc('purchase_date');
+
+        if ($request->filled('q')) {
+            $term = trim((string)$request->q);
+            $purchasesQ->where(function($qq) use ($term) {
+                if (ctype_digit($term)) {
+                    $qq->orWhere('purchases.id', (int)$term);
+                }
+                $qq->orWhere('purchases.reference_no', 'like', "%{$term}%")
+                   ->orWhere('purchases.supplier_name', 'like', "%{$term}%");
+            });
+        }
+
+        $purchases = $purchasesQ->limit(500)->get();
 
         $selectedPurchase = null;
         $lines = [];
@@ -126,7 +139,7 @@ class PurchaseReturnController extends Controller
                 /** @var PurchaseLine|null $purchaseLine */
                 $purchaseLine = $purchaseLinesById->get($lineId);
                 if (!$purchaseLine) {
-                    abort(422, 'Invalid purchase line selected.');
+                    return back()->withErrors(['lines' => 'Invalid purchase line selected.'])->withInput();
                 }
 
                 $alreadyReturned = (int) PurchaseReturnLine::query()->where('purchase_line_id', $purchaseLine->id)->sum('quantity');

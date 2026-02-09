@@ -108,7 +108,7 @@ class PurchaseController extends Controller
                     'ref_line_id' => $purchaseLine->id,
                     'item_id' => (int)$line['item_id'],
                     'qty_in' => $qty,
-                    'unit_price' => $price !== null ? $price : 0,
+                    'unit_price' => $price,
                     'specification_snapshot' => $line['specification'] ?? null,
                     'created_by' => $userId,
                 ]);
@@ -227,14 +227,12 @@ class PurchaseController extends Controller
                             $purchaseLedger->txn_date = $purchase->purchase_date;
                             $purchaseLedger->qty_in = $qty;
                             $purchaseLedger->specification_snapshot = $line->specification;
-                            $purchaseLedger->unit_price = $price !== null ? $price : 0;
+                            $purchaseLedger->unit_price = $price;
                             $purchaseLedger->save();
                         }
 
-                        // Propagate price to issued + return records (only if confirmed)
-                        if ($price !== null) {
-                            $fifo->propagateBatchPrice($line->id, $price);
-                        }
+                        // Propagate price to all dependent records (including pending -> NULL)
+                        $fifo->propagateBatchPrice($line->id, $price);
                     } else {
                         // Add new item later to same purchase
                         $total = $price !== null ? ($qty * $price) : 0;
@@ -255,7 +253,7 @@ class PurchaseController extends Controller
                             'ref_line_id' => $newLine->id,
                             'item_id' => (int)$row['item_id'],
                             'qty_in' => $qty,
-                            'unit_price' => $price !== null ? $price : 0,
+                            'unit_price' => $price,
                             'specification_snapshot' => $row['specification'] ?? null,
                             'created_by' => auth()->id(),
                         ]);

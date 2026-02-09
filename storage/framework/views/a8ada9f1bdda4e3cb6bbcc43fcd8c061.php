@@ -26,7 +26,7 @@
                     <?php $__currentLoopData = $issues; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $iss): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <option value="<?php echo e($iss->id); ?>" <?php if(request('issue_id') == $iss->id): echo 'selected'; endif; ?>
                             data-search="<?php echo e(strtolower(''.$iss->id.' '.$iss->issue_date.' '.($iss->reference_no ?? '').' '.($iss->issued_to ?? ''))); ?>">
-                            #<?php echo e($iss->id); ?> | <?php echo e($iss->issue_date); ?> <?php echo e(optional($iss->created_at)->format('H:i:s')); ?> | <?php echo e($iss->reference_no ?? 'No Ref'); ?> | <?php echo e($iss->issued_to ?? 'N/A'); ?>
+                            #<?php echo e($iss->id); ?> | <?php echo e(optional($iss->issue_date)->format('Y-m-d')); ?> <?php echo e(optional($iss->created_at)->format('H:i:s')); ?> | <?php echo e($iss->reference_no ?? 'No Ref'); ?> | <?php echo e($iss->issued_to ?? 'N/A'); ?>
 
                         </option>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>

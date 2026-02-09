@@ -131,7 +131,37 @@ class IssueController extends Controller
             ->groupBy('issue_line_id')
             ->pluck('returned_qty', 'issue_line_id');
 
-        return view('issue.show', compact('issue', 'returned'));
+        // Prepare view-safe data (avoid Blade-side PHP blocks, prevent parse errors)
+        $lines = $issue->lines->map(function ($line) use ($returned) {
+            $retQty = (int)($returned[$line->id] ?? 0);
+            $remQty = (int)$line->quantity - $retQty;
+            if ($remQty < 0) $remQty = 0;
+
+            $price = $line->issue_price;
+            $netTotal = ($price === null) ? 0 : ($remQty * (int)$price);
+
+            return (object)[
+                'id' => $line->id,
+                'item_id' => $line->item_id,
+                'item_code' => optional($line->item)->item_code,
+                'item_name' => optional($line->item)->name,
+                'quantity' => (int)$line->quantity,
+                'returned_qty' => $retQty,
+                'remaining_qty' => $remQty,
+                'issue_price' => $price,
+                'specification' => $line->specification,
+                'net_line_total' => (int)$netTotal,
+            ];
+        });
+
+        $totals = (object)[
+            'total_qty' => (int)$lines->sum('quantity'),
+            'total_returned' => (int)$lines->sum('returned_qty'),
+            'total_remaining' => (int)$lines->sum('remaining_qty'),
+            'total_net_amount' => (int)$lines->sum('net_line_total'),
+        ];
+
+        return view('issue.show', compact('issue', 'returned', 'lines', 'totals'));
     }
 
     /**
