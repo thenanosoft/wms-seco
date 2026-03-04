@@ -39,7 +39,7 @@
                                 <div class="font-medium">{{ $r->item_code }} - {{ $r->item_name }}</div>
                             </td>
                             <td class="px-4 py-3 text-right">{{ $r->qty }}</td>
-                            <td class="px-4 py-3 text-right">{{ number_format($r->value) }}</td>
+                            <td class="px-4 py-3 text-right">{{ number_format((float)$r->value, 4) }}</td>
                             <td class="px-4 py-3">
                                 @if($r->pending_batches > 0)
                                     <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">{{ $r->pending_batches }} batch(es)</span>
@@ -57,7 +57,7 @@
                 <tfoot class="bg-gray-50">
                     <tr>
                         <th class="px-4 py-3 text-left font-semibold" colspan="3">Total</th>
-                        <th class="px-4 py-3 text-right font-semibold">{{ number_format($grandTotal) }}</th>
+                        <th class="px-4 py-3 text-right font-semibold">{{ number_format((float)$grandTotal, 4) }}</th>
                         <th class="px-4 py-3"></th>
                     </tr>
                 </tfoot>
@@ -87,8 +87,8 @@
                             <td class="px-3 py-2 whitespace-nowrap">{{ $b->purchase_date }}</td>
                             <td class="px-3 py-2">{{ $b->item_code }} - {{ $b->item_name }}</td>
                             <td class="px-3 py-2 text-right">{{ $b->remaining_qty }}</td>
-                            <td class="px-3 py-2 text-right">{{ $b->unit_price_display }}</td>
-                            <td class="px-3 py-2 text-right">{{ number_format($b->value) }}</td>
+                            <td class="px-3 py-2 text-right">{{ number_format((float)$b->unit_price_display, 4) }}</td>
+                            <td class="px-3 py-2 text-right">{{ number_format((float)$b->value, 4) }}</td>
                             <td class="px-3 py-2">
                                 @if($b->price_pending)
                                     <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">Pending</span>

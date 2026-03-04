@@ -90,11 +90,11 @@
                             @if($line->issue_price === null)
                                 <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Pending</span>
                             @else
-                                {{ number_format((float)$line->issue_price, 0) }}
+                                {{ number_format((float)$line->issue_price, 4) }}
                             @endif
                         </td>
                         <td class="px-4 py-2">{{ $line->specification ?: '' }}</td>
-                        <td class="px-4 py-2 text-right">{{ number_format((float)$line->net_line_total, 0) }}</td>
+                        <td class="px-4 py-2 text-right">{{ number_format((float)$line->net_line_total, 4) }}</td>
                     </tr>
                 @empty
                     <tr>
@@ -104,12 +104,12 @@
 
                 <tr class="bg-gray-50 font-semibold">
                     <td class="px-4 py-2 text-right">Totals</td>
-                    <td class="px-4 py-2 text-right">{{ number_format((int)($totals->total_qty ?? 0), 0) }}</td>
-                    <td class="px-4 py-2 text-right">{{ number_format((int)($totals->total_returned ?? 0), 0) }}</td>
-                    <td class="px-4 py-2 text-right">{{ number_format((int)($totals->total_remaining ?? 0), 0) }}</td>
+                    <td class="px-4 py-2 text-right">{{ number_format((float)($totals->total_qty ?? 0), 4) }}</td>
+                    <td class="px-4 py-2 text-right">{{ number_format((float)($totals->total_returned ?? 0), 4) }}</td>
+                    <td class="px-4 py-2 text-right">{{ number_format((float)($totals->total_remaining ?? 0), 4) }}</td>
                     <td class="px-4 py-2"></td>
                     <td class="px-4 py-2"></td>
-                    <td class="px-4 py-2 text-right">{{ number_format((int)($totals->total_net_amount ?? 0), 0) }}</td>
+                    <td class="px-4 py-2 text-right">{{ number_format((float)($totals->total_net_amount ?? 0), 4) }}</td>
                 </tr>
             </tbody>
         </table>

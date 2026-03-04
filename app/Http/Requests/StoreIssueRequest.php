@@ -23,7 +23,7 @@ class StoreIssueRequest extends FormRequest
             'lines.*.group_id' => ['required', 'integer', 'exists:groups,id'],
             'lines.*.item_id' => ['required', 'integer', 'exists:items,id'],
             'lines.*.specification' => ['nullable', 'string', 'max:2000'],
-            'lines.*.quantity' => ['required', 'integer', 'min:1'],
+            'lines.*.quantity' => ['required', 'numeric', 'min:0.0001', 'regex:/^\d+(\.\d{1,4})?$/'],
         ];
     }
 

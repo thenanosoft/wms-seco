@@ -37,13 +37,13 @@ class ValuationController extends Controller
             ', [$asOf, $asOf, $asOf]);
 
         $batches = $batchRows->get()->map(function ($r) {
-            $remaining = (int)$r->qty_purchased - (int)$r->issue_out + (int)$r->issue_return_in - (int)$r->purchase_return_out;
+            $remaining = round((float)$r->qty_purchased - (float)$r->issue_out + (float)$r->issue_return_in - (float)$r->purchase_return_out, 4);
             if ($remaining < 0) {
                 $remaining = 0; // safety
             }
             $pending = $r->unit_price === null;
-            $price = $pending ? 0 : (int)$r->unit_price;
-            $value = $remaining * $price;
+            $price = $pending ? 0 : round((float)$r->unit_price, 4);
+            $value = round($remaining * $price, 4);
 
             $r->remaining_qty = $remaining;
             $r->price_pending = $pending;
@@ -51,7 +51,7 @@ class ValuationController extends Controller
             $r->value = $value;
             return $r;
         })->filter(function ($r) {
-            return (int)$r->remaining_qty > 0;
+            return (float)$r->remaining_qty > 0;
         })->values();
 
         // Item summary

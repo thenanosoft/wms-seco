@@ -28,6 +28,9 @@ class StockLedger extends Model
 
     protected $casts = [
         'txn_date' => 'date',
+        'qty_in' => 'float',
+        'qty_out' => 'float',
+        'unit_price' => 'float',
     ];
 
     public function item(): BelongsTo

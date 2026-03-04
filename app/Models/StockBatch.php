@@ -22,9 +22,9 @@ class StockBatch extends Model
 
     protected $casts = [
         'purchase_date' => 'date',
-        'unit_price' => 'integer',
-        'qty_purchased' => 'integer',
-        'qty_available' => 'integer',
+        'unit_price' => 'float',
+        'qty_purchased' => 'float',
+        'qty_available' => 'float',
     ];
 
     public function purchaseLine(): BelongsTo

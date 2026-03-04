@@ -64,7 +64,7 @@
             <td><span class="badge {{ $tClass }}">{{ $tLabel }}</span></td>
             <td class="right">{{ (int)($r->qty_in ?? 0) }}</td>
             <td class="right">{{ (int)($r->qty_out ?? 0) }}</td>
-            <td class="right">{{ number_format((float)($r->unit_price ?? 0), 0) }}</td>
+            <td class="right">{{ number_format((float)($r->unit_price ?? 0), 4) }}</td>
             <td class="muted">{{ $ref }}</td>
             <td>{{ $r->notes ?? '' }}</td>
         </tr>

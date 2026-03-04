@@ -76,8 +76,8 @@ class PurchaseReturnController extends Controller
                 $stockSvc = app(StockService::class);
 
                 $lines = $selectedPurchase->lines->map(function (PurchaseLine $line) use ($stockSvc) {
-                    $returned = (int) PurchaseReturnLine::query()->where('purchase_line_id', $line->id)->sum('quantity');
-                    $remainingFromPurchase = max(0, (int)$line->quantity - $returned);
+                    $returned = (float) PurchaseReturnLine::query()->where('purchase_line_id', $line->id)->sum('quantity');
+                    $remainingFromPurchase = max(0, round((float)$line->quantity - $returned, 4));
                     $batch = StockBatch::query()->where('purchase_line_id', $line->id)->first();
                     $availableNow = (int)($batch?->qty_available ?? 0);
                     $maxReturn = max(0, min($remainingFromPurchase, $availableNow));
@@ -88,8 +88,8 @@ class PurchaseReturnController extends Controller
                         'item_code' => $line->item->item_code,
                         'item_name' => $line->item->name,
                         'specification' => $line->specification,
-                        'purchase_price' => (int)$line->purchase_price,
-                        'purchased_qty' => (int)$line->quantity,
+                        'purchase_price' => round((float)$line->purchase_price, 4),
+                        'purchased_qty' => (float)$line->quantity,
                         'returned_qty' => $returned,
                         'remaining_from_purchase' => $remainingFromPurchase,
                         'available_now' => $availableNow,
@@ -111,11 +111,11 @@ class PurchaseReturnController extends Controller
             'lines' => ['required','array','min:1'],
             'lines.*.purchase_line_id' => ['required','integer','exists:purchase_lines,id'],
             // Business rule: integers only (no decimals). 0 means "skip this line".
-            'lines.*.quantity' => ['required','integer','min:0'],
+            'lines.*.quantity' => ['required','numeric','min:0', 'regex:/^\d+(\.\d{1,4})?$/'],
         ]);
 
         // Must return at least 1 item qty.
-        $hasQty = collect($data['lines'] ?? [])->contains(fn($r) => ((int)($r['quantity'] ?? 0)) > 0);
+        $hasQty = collect($data['lines'] ?? [])->contains(fn($r) => ((float)($r['quantity'] ?? 0)) > 0);
         if (!$hasQty) {
             return back()->withErrors(['lines' => 'Please enter at least 1 return quantity.'])->withInput();
         }
@@ -133,7 +133,7 @@ class PurchaseReturnController extends Controller
 
             foreach ($data['lines'] as $row) {
                 $lineId = (int)$row['purchase_line_id'];
-                $qty = (int)$row['quantity'];
+                $qty = round((float)$row['quantity'], 4);
                 if ($qty <= 0) continue;
 
                 /** @var PurchaseLine|null $purchaseLine */
@@ -142,8 +142,8 @@ class PurchaseReturnController extends Controller
                     return back()->withErrors(['lines' => 'Invalid purchase line selected.'])->withInput();
                 }
 
-                $alreadyReturned = (int) PurchaseReturnLine::query()->where('purchase_line_id', $purchaseLine->id)->sum('quantity');
-                $remainingFromPurchase = max(0, (int)$purchaseLine->quantity - $alreadyReturned);
+$alreadyReturned = (float) PurchaseReturnLine::query()->where('purchase_line_id', $purchaseLine->id)->sum('quantity');
+                    $remainingFromPurchase = max(0, round((float)$purchaseLine->quantity - $alreadyReturned, 4));
                 $batch = StockBatch::query()->where('purchase_line_id', $purchaseLine->id)->lockForUpdate()->first();
                 $availableNow = (int)($batch?->qty_available ?? 0);
                 $maxReturn = max(0, min($remainingFromPurchase, $availableNow));
@@ -152,7 +152,7 @@ class PurchaseReturnController extends Controller
                     abort(422, "Return qty cannot exceed allowed return qty (Max: {$maxReturn}).");
                 }
 
-                $lineTotal = ((int)$purchaseLine->purchase_price) * $qty;
+                $lineTotal = round((float)$purchaseLine->purchase_price * $qty, 4);
                 $rLine = PurchaseReturnLine::create([
                     'purchase_return_transaction_id' => $tx->id,
                     'purchase_line_id' => $purchaseLine->id,
@@ -169,7 +169,7 @@ class PurchaseReturnController extends Controller
                     'ref_line_id' => $rLine->id,
                     'item_id' => $purchaseLine->item_id,
                     'qty_out' => $qty,
-                    'unit_price' => (int)$purchaseLine->purchase_price,
+                    'unit_price' => round((float)$purchaseLine->purchase_price, 4),
                     'specification_snapshot' => $purchaseLine->specification,
                     'created_by' => auth()->id(),
                 ]);
@@ -208,7 +208,7 @@ class PurchaseReturnController extends Controller
             'notes' => ['nullable','string','max:255'],
             'lines' => ['required','array'],
             'lines.*.id' => ['required','integer','exists:purchase_return_lines,id'],
-            'lines.*.quantity' => ['required','integer','min:0'],
+            'lines.*.quantity' => ['required','numeric','min:0', 'regex:/^\d+(\.\d{1,4})?$/'],
         ]);
 
         return DB::transaction(function () use ($purchaseReturnTransaction, $data, $stock) {
@@ -218,7 +218,7 @@ class PurchaseReturnController extends Controller
                 if (!$pl) continue;
                 $batch = StockBatch::where('purchase_line_id', $pl->id)->lockForUpdate()->first();
                 if ($batch) {
-                    $batch->qty_available = (int)$batch->qty_available + (int)$rl->quantity;
+                    $batch->qty_available = round((float)$batch->qty_available + (float)$rl->quantity, 4);
                     $batch->save();
                 }
             }
@@ -235,17 +235,17 @@ class PurchaseReturnController extends Controller
             foreach ($data['lines'] as $row) {
                 $line = $purchaseReturnTransaction->lines->firstWhere('id', (int)$row['id']);
                 if (!$line) continue;
-                $newQty = (int)$row['quantity'];
+                $newQty = round((float)$row['quantity'], 4);
 
                 // cannot return more than purchased qty for that purchase line
                 $pl = \App\Models\PurchaseLine::query()->find($line->purchase_line_id);
                 if ($pl) {
-                    $purchased = (int)$pl->quantity;
+                    $purchased = (float)$pl->quantity;
                     $already = \App\Models\PurchaseReturnLine::query()
                         ->where('purchase_line_id', $pl->id)
                         ->where('id','!=',$line->id)
                         ->sum('quantity');
-                    if ($newQty + (int)$already > $purchased) {
+                    if ($newQty + (float)$already > $purchased) {
                         return back()->withErrors(['lines' => 'Return qty cannot exceed purchased qty.'])->withInput();
                     }
                 }
@@ -256,7 +256,7 @@ class PurchaseReturnController extends Controller
 
                 $batch = StockBatch::where('purchase_line_id', $pl?->id)->lockForUpdate()->first();
                 if ($batch) {
-                    $batch->qty_available = max(0, (int)$batch->qty_available - $newQty);
+                    $batch->qty_available = max(0, round((float)$batch->qty_available - $newQty, 4));
                     $batch->save();
                 }
 
@@ -266,7 +266,7 @@ class PurchaseReturnController extends Controller
                     'ref_line_id' => $line->id,
                     'item_id' => $pl?->item_id,
                     'qty_out' => $newQty,
-                    'unit_price' => (int)$pl?->purchase_price,
+                    'unit_price' => round((float)($pl?->purchase_price ?? 0), 4),
                     'specification_snapshot' => $pl?->specification,
                     'created_by' => $purchaseReturnTransaction->created_by,
                 ]);
@@ -287,7 +287,7 @@ class PurchaseReturnController extends Controller
                 if (!$pl) continue;
                 $batch = StockBatch::where('purchase_line_id', $pl->id)->lockForUpdate()->first();
                 if ($batch) {
-                    $batch->qty_available = (int)$batch->qty_available + (int)$rl->quantity;
+                    $batch->qty_available = round((float)$batch->qty_available + (float)$rl->quantity, 4);
                     $batch->save();
                 }
             }

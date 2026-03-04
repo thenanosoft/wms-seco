@@ -193,8 +193,8 @@ class ExportController extends Controller
                     $r->item_name,
                     $r->specification,
                     $r->quantity,
-                    number_format((float)$r->purchase_price, 2, '.', ''),
-                    number_format((float)$r->line_total, 2, '.', ''),
+                    number_format((float)$r->purchase_price, 4, '.', ''),
+                    number_format((float)$r->line_total, 4, '.', ''),
                     $r->supplier_name,
                     $r->reference_no,
                 ]);
@@ -253,8 +253,8 @@ class ExportController extends Controller
                     (int)$r->quantity,
                     $ret,
                     $net,
-                    $price === null ? 'PENDING' : number_format($price, 2, '.', ''),
-                    number_format($netTotal, 2, '.', ''),
+                    $price === null ? 'PENDING' : number_format($price, 4, '.', ''),
+                    number_format($netTotal, 4, '.', ''),
                     $r->issued_to,
                     $r->reference_no,
                 ]);
@@ -262,7 +262,7 @@ class ExportController extends Controller
 
             // Totals row
             fputcsv($out, []);
-            fputcsv($out, ['TOTALS','','','','','',$tQty,$tRet,$tNet,'',number_format($tAmount, 2, '.', ''),'','']);
+            fputcsv($out, ['TOTALS','','','','','',$tQty,$tRet,$tNet,'',number_format($tAmount, 4, '.', ''),'','']);
 
             fclose($out);
         };
@@ -342,8 +342,8 @@ class ExportController extends Controller
                 $r->item_code,
                 $r->item_name,
                 $r->quantity,
-                number_format((float)$r->unit_price, 2, '.', ''),
-                number_format((float)$r->line_total, 2, '.', ''),
+                number_format((float)$r->unit_price, 4, '.', ''),
+                number_format((float)$r->line_total, 4, '.', ''),
                 $r->party,
                 $r->reference_no,
             ]);
@@ -427,8 +427,8 @@ class ExportController extends Controller
                             $r->item_code,
                             $r->item_name,
                             (string)$r->quantity,
-                            number_format((float)$r->unit_price,2,'.',''),
-                            number_format(((float)$r->unit_price*(float)$r->quantity),2,'.',''),
+                            number_format((float)$r->unit_price,4,'.',''),
+                            number_format(((float)$r->unit_price*(float)$r->quantity),4,'.',''),
                             $r->reference_no,
                             $r->notes,
                         ]);
@@ -477,8 +477,8 @@ class ExportController extends Controller
                             $r->item_code,
                             $r->item_name,
                             (string)$r->quantity,
-                            number_format((float)$r->unit_price,2,'.',''),
-                            number_format(((float)$r->unit_price*(float)$r->quantity),2,'.',''),
+                            number_format((float)$r->unit_price,4,'.',''),
+                            number_format(((float)$r->unit_price*(float)$r->quantity),4,'.',''),
                             $r->reference_no,
                             $r->notes,
                         ]);
@@ -674,8 +674,8 @@ public function csvFullHistory(Request $request)
                     (string)($r->issue_ref_no ?? ''),
                     $qtyIn ?: '',
                     $qtyOut ?: '',
-                    number_format($price, 2, '.', ''),
-                    number_format($lineTotal, 2, '.', ''),
+                    number_format($price, 4, '.', ''),
+                    number_format($lineTotal, 4, '.', ''),
                     (string)$r->ref_table,
                     (string)$r->ref_id,
                     (string)($r->notes ?? ''),

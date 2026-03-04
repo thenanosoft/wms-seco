@@ -81,19 +81,19 @@ class StockService
 
 
     /**
-     * Business rule: quantities are integers only.
+     * Returns available stock (qty_in - qty_out). Supports decimal quantities.
      */
-    public function getAvailableStock(int $itemId): int
+    public function getAvailableStock(int $itemId): float
     {
         $row = StockLedger::query()
             ->selectRaw('COALESCE(SUM(qty_in),0) as qty_in_sum, COALESCE(SUM(qty_out),0) as qty_out_sum')
             ->where('item_id', $itemId)
             ->first();
 
-        $in = (int) ($row->qty_in_sum ?? 0);
-        $out = (int) ($row->qty_out_sum ?? 0);
+        $in = (float) ($row->qty_in_sum ?? 0);
+        $out = (float) ($row->qty_out_sum ?? 0);
 
-        return $in - $out;
+        return round($in - $out, 4);
     }
 
     public function stockSummary()
@@ -146,11 +146,11 @@ public function getAvailableStockDetailed(int $itemId): array
         ->where('item_id', $itemId)
         ->first();
 
-    $in = (int) ($row->qty_in_sum ?? 0);
-    $out = (int) ($row->qty_out_sum ?? 0);
+    $in = (float) ($row->qty_in_sum ?? 0);
+    $out = (float) ($row->qty_out_sum ?? 0);
 
     return [
-        'available' => $in - $out,
+        'available' => round($in - $out, 4),
         'total_in' => $in,
         'total_out' => $out,
     ];
@@ -224,11 +224,11 @@ public function stockSummaryWithLowFlag(): array
      *
      * NOTE: Must be called inside a DB transaction.
      */
-    public function issueItemFIFO(Issue $issue, int $itemId, int $qty, ?string $specification = null): void
+    public function issueItemFIFO(Issue $issue, int $itemId, float $qty, ?string $specification = null): void
     {
-        $qty = (int) $qty;
+        $qty = round((float) $qty, 4);
         if ($qty <= 0) {
-            throw ValidationException::withMessages(['lines' => 'Quantity must be at least 1.']);
+            throw ValidationException::withMessages(['lines' => 'Quantity must be at least 0.0001.']);
         }
 
         // Lock FIFO batches for this item.
@@ -244,21 +244,21 @@ public function stockSummaryWithLowFlag(): array
         foreach ($batches as $batch) {
             if ($remaining <= 0) break;
 
-            $available = (int) $batch->qty_available;
+            $available = (float) $batch->qty_available;
             if ($available <= 0) continue;
 
-            $take = min($remaining, $available);
+            $take = round(min($remaining, $available), 4);
             if ($take <= 0) continue;
 
             // Decrease batch available qty
-            $batch->qty_available = $available - $take;
-            if ((int)$batch->qty_available < 0) {
+            $batch->qty_available = round($available - $take, 4);
+            if ((float)$batch->qty_available < 0) {
                 throw ValidationException::withMessages(['lines' => 'Batch stock became negative.']);
             }
             $batch->save();
 
-            $price = $batch->unit_price === null ? null : (float)$batch->unit_price;
-            $lineTotal = $price === null ? 0 : (float)($take * $price);
+            $price = $batch->unit_price === null ? null : round((float)$batch->unit_price, 4);
+            $lineTotal = $price === null ? 0 : round($take * $price, 4);
 
             $issueLine = IssueLine::create([
                 'issue_id' => $issue->id,
@@ -281,7 +281,7 @@ public function stockSummaryWithLowFlag(): array
                 'created_by' => $issue->created_by ?? auth()->id(),
             ]);
 
-            $remaining -= $take;
+            $remaining = round($remaining - $take, 4);
         }
 
         if ($remaining > 0) {
@@ -296,9 +296,9 @@ public function stockSummaryWithLowFlag(): array
      * Issue additional qty from the SAME purchase_line batch (if available).
      * Returns how much was actually issued from this batch.
      */
-    public function issueFromPurchaseLine(Issue $issue, int $purchaseLineId, int $qty, ?string $specification = null): int
+    public function issueFromPurchaseLine(Issue $issue, int $purchaseLineId, float $qty, ?string $specification = null): float
     {
-        $qty = (int)$qty;
+        $qty = round((float)$qty, 4);
         if ($qty <= 0) return 0;
 
         $batch = StockBatch::query()
@@ -306,17 +306,18 @@ public function stockSummaryWithLowFlag(): array
             ->lockForUpdate()
             ->first();
 
-        if (!$batch || (int)$batch->qty_available <= 0) {
+        if (!$batch || (float)$batch->qty_available <= 0) {
             return 0;
         }
 
-        $take = min($qty, (int)$batch->qty_available);
+        $avail = (float)$batch->qty_available;
+        $take = round(min($qty, $avail), 4);
         if ($take <= 0) return 0;
 
-        $batch->qty_available = (int)$batch->qty_available - $take;
+        $batch->qty_available = round($avail - $take, 4);
         $batch->save();
 
-        $price = $batch->unit_price === null ? 0 : (int)$batch->unit_price;
+        $price = $batch->unit_price === null ? 0 : round((float)$batch->unit_price, 4);
 
         IssueLine::create([
             'issue_id' => $issue->id,
@@ -325,7 +326,7 @@ public function stockSummaryWithLowFlag(): array
             'specification' => $specification,
             'issue_price' => $price,
             'quantity' => $take,
-            'line_total' => $take * $price,
+            'line_total' => round($take * $price, 4),
         ]);
 
         return $take;

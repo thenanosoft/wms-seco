@@ -141,7 +141,7 @@
                                 </td>
 
                                 <td class="px-3 py-2">
-                                    <input type="number" step="1" min="0"
+                                    <input type="number" step="0.0001" min="0.0001"
                                            class="w-28 rounded-lg border-gray-200 bg-gray-50"
                                            x-model.number="line.display_price"
                                            disabled>
@@ -153,8 +153,8 @@
 
                                 <td class="px-3 py-2">
                                     <input type="number"
-       step="1"
-       min="1"
+       step="0.0001"
+       min="0.0001"
        :max="line.available_stock"
        class="w-24 rounded-lg border-gray-200"
        :name="`lines[${idx}][quantity]`"
@@ -380,7 +380,7 @@ validateQty(idx) {
         },
 
         formatMoney(v) {
-            return Number(v || 0).toFixed(2);
+            return Number(v || 0).toFixed(4);
         }
     }
 }

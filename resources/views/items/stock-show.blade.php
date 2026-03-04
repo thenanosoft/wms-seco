@@ -116,7 +116,7 @@
                         </td>
                         <td class="px-4 py-2 text-right">{{ $h->qty_in }}</td>
                         <td class="px-4 py-2 text-right">{{ $h->qty_out }}</td>
-                        <td class="px-4 py-2 text-right">{{ number_format($h->unit_price, 0) }}</td>
+                        <td class="px-4 py-2 text-right">{{ number_format((float)$h->unit_price, 4) }}</td>
                         <td class="px-4 py-2">{{ $h->specification_snapshot }}</td>
                         <td class="px-4 py-2 text-xs text-gray-600">
                             {{ $h->ref_table }} #{{ $h->ref_id }}

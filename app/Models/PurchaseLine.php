@@ -31,6 +31,11 @@ class PurchaseLine extends Model
         return $this->belongsTo(Item::class);
     }
     
+    protected $casts = [
+        'quantity' => 'float',
+        'line_total' => 'float',
+    ];
+
     public function setPurchasePriceAttribute($value): void
     {
         // Price pending if empty or 0
@@ -38,6 +43,6 @@ class PurchaseLine extends Model
             $this->attributes["purchase_price"] = null;
             return;
         }
-        $this->attributes["purchase_price"] = (float) $value;
+        $this->attributes["purchase_price"] = round((float) $value, 4);
     }
 }

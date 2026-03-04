@@ -39,7 +39,7 @@
 
         <div class="rounded-xl border bg-white p-4">
             <div class="text-sm text-gray-600">Today Purchases</div>
-            <div class="mt-2 text-2xl font-semibold">{{ number_format($purchase->total, 0) }}</div>
+            <div class="mt-2 text-2xl font-semibold">{{ number_format((float)$purchase->total, 4) }}</div>
             <div class="text-xs text-gray-600 mt-1">Qty: {{ $purchase->qty }}</div>
             <div class="mt-3">
                 <a href="{{ route('purchases.index') }}" class="text-sm font-medium text-gray-900 underline">
@@ -50,7 +50,7 @@
 
         <div class="rounded-xl border bg-white p-4">
             <div class="text-sm text-gray-600">Today Issues</div>
-            <div class="mt-2 text-2xl font-semibold">{{ number_format($issue->total, 0) }}</div>
+            <div class="mt-2 text-2xl font-semibold">{{ number_format((float)$issue->total, 4) }}</div>
             <div class="text-xs text-gray-600 mt-1">Qty: {{ $issue->qty }}</div>
             <div class="mt-3">
                 <a href="{{ route('issues.index') }}" class="text-sm font-medium text-gray-900 underline">
@@ -62,7 +62,7 @@
         <div class="rounded-xl border bg-white p-4">
             <div class="text-sm text-gray-600">Today Return Inward</div>
             <div class="mt-2 text-2xl font-semibold">{{ number_format($returnIn->qty, 0) }}</div>
-            <div class="text-xs text-gray-600 mt-1">Value: {{ number_format($returnIn->total, 0) }}</div>
+            <div class="text-xs text-gray-600 mt-1">Value: {{ number_format((float)$returnIn->total, 4) }}</div>
             <div class="mt-3">
                 <a href="{{ route('returns.issue.index') }}" class="text-sm font-medium text-gray-900 underline">View Issue Returns</a>
             </div>
@@ -71,7 +71,7 @@
         <div class="rounded-xl border bg-white p-4">
             <div class="text-sm text-gray-600">Today Return Outward</div>
             <div class="mt-2 text-2xl font-semibold">{{ number_format($returnOut->qty, 0) }}</div>
-            <div class="text-xs text-gray-600 mt-1">Value: {{ number_format($returnOut->total, 0) }}</div>
+            <div class="text-xs text-gray-600 mt-1">Value: {{ number_format((float)$returnOut->total, 4) }}</div>
             <div class="mt-3">
                 <a href="{{ route('returns.purchase.index') }}" class="text-sm font-medium text-gray-900 underline">View Purchase Returns</a>
             </div>
@@ -170,9 +170,9 @@
                     <div class="text-sm text-gray-600">Total Items</div>
                     <div class="mt-1 text-2xl font-semibold">{{ $itemsCount }}</div>
                     <div class="mt-4 grid grid-cols-1 gap-2 text-sm">
-                        <div class="flex items-center justify-between"><span class="text-gray-600">Total In Value</span><span class="font-semibold">{{ number_format($inValue, 0) }}</span></div>
-                        <div class="flex items-center justify-between"><span class="text-gray-600">Total Out Value</span><span class="font-semibold">{{ number_format($outValue, 0) }}</span></div>
-                        <div class="flex items-center justify-between"><span class="text-gray-600">Balance Value</span><span class="font-semibold">{{ number_format($balanceValue, 0) }}</span></div>
+                        <div class="flex items-center justify-between"><span class="text-gray-600">Total In Value</span><span class="font-semibold">{{ number_format((float)$inValue, 4) }}</span></div>
+                        <div class="flex items-center justify-between"><span class="text-gray-600">Total Out Value</span><span class="font-semibold">{{ number_format((float)$outValue, 4) }}</span></div>
+                        <div class="flex items-center justify-between"><span class="text-gray-600">Balance Value</span><span class="font-semibold">{{ number_format((float)$balanceValue, 4) }}</span></div>
                     </div>
                 </div>
             </div>

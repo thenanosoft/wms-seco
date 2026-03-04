@@ -66,16 +66,16 @@ class IssueReturnController extends Controller
             $selectedIssue = Issue::query()->with(['lines.item.group'])->find($request->issue_id);
             if ($selectedIssue) {
                 $lines = $selectedIssue->lines->map(function (IssueLine $line) {
-                    $returned = (int) IssueReturnLine::query()->where('issue_line_id', $line->id)->sum('quantity');
-                    $remaining = max(0, (int)$line->quantity - $returned);
+                    $returned = (float) IssueReturnLine::query()->where('issue_line_id', $line->id)->sum('quantity');
+                    $remaining = max(0, round((float)$line->quantity - $returned, 4));
                     return [
                         'line_id' => $line->id,
                         'group_code' => $line->item->group->group_code,
                         'item_code' => $line->item->item_code,
                         'item_name' => $line->item->name,
                         'specification' => $line->specification,
-                        'issue_price' => (int)$line->issue_price,
-                        'issued_qty' => (int)$line->quantity,
+                        'issue_price' => round((float)$line->issue_price, 4),
+                        'issued_qty' => (float)$line->quantity,
                         'returned_qty' => $returned,
                         'remaining_qty' => $remaining,
                     ];
@@ -94,12 +94,11 @@ class IssueReturnController extends Controller
             'notes' => ['nullable','string','max:255'],
             'lines' => ['required','array','min:1'],
             'lines.*.issue_line_id' => ['required','integer','exists:issue_lines,id'],
-            // Business rule: integers only (no decimals). 0 means "skip this line".
-            'lines.*.quantity' => ['required','integer','min:0'],
+            'lines.*.quantity' => ['required','numeric','min:0', 'regex:/^\d+(\.\d{1,4})?$/'],
         ]);
 
-        // Must return at least 1 item qty.
-        $hasQty = collect($data['lines'] ?? [])->contains(fn($r) => ((int)($r['quantity'] ?? 0)) > 0);
+        // Must return at least some qty.
+        $hasQty = collect($data['lines'] ?? [])->contains(fn($r) => ((float)($r['quantity'] ?? 0)) > 0);
         if (!$hasQty) {
             return back()->withErrors(['lines' => 'Please enter at least 1 return quantity.'])->withInput();
         }
@@ -117,7 +116,7 @@ class IssueReturnController extends Controller
 
             foreach ($data['lines'] as $row) {
                 $lineId = (int)$row['issue_line_id'];
-                $qty = (int)$row['quantity'];
+                $qty = round((float)$row['quantity'], 4);
                 if ($qty <= 0) continue;
 
                 /** @var IssueLine|null $issueLine */
@@ -126,14 +125,14 @@ class IssueReturnController extends Controller
                     return back()->withErrors(['lines' => 'Invalid issue line selected.'])->withInput();
                 }
 
-                $alreadyReturned = (int) IssueReturnLine::query()->where('issue_line_id', $issueLine->id)->sum('quantity');
-                $remaining = max(0, (int)$issueLine->quantity - $alreadyReturned);
+                $alreadyReturned = (float) IssueReturnLine::query()->where('issue_line_id', $issueLine->id)->sum('quantity');
+                $remaining = max(0, round((float)$issueLine->quantity - $alreadyReturned, 4));
 
                 if ($qty > $remaining) {
                     return back()->withErrors(['lines' => "Return qty cannot exceed remaining issued qty (Remaining: {$remaining})."])->withInput();
                 }
 
-                $lineTotal = ((int)$issueLine->issue_price) * $qty;
+                $lineTotal = round((float)$issueLine->issue_price * $qty, 4);
                 $rLine = IssueReturnLine::create([
                     'issue_return_transaction_id' => $tx->id,
                     'issue_line_id' => $issueLine->id,
@@ -150,7 +149,7 @@ class IssueReturnController extends Controller
                     'ref_line_id' => $rLine->id,
                     'item_id' => $issueLine->item_id,
                     'qty_in' => $qty,
-                    'unit_price' => (int)$issueLine->issue_price,
+                    'unit_price' => round((float)$issueLine->issue_price, 4),
                     'specification_snapshot' => $issueLine->specification,
                     'created_by' => auth()->id(),
                 ]);
@@ -195,7 +194,7 @@ class IssueReturnController extends Controller
             'notes' => ['nullable','string','max:255'],
             'lines' => ['required','array'],
             'lines.*.id' => ['required','integer','exists:issue_return_lines,id'],
-            'lines.*.quantity' => ['required','integer','min:0'],
+            'lines.*.quantity' => ['required','numeric','min:0', 'regex:/^\d+(\.\d{1,4})?$/'],
         ]);
 
         return DB::transaction(function () use ($issueReturnTransaction, $data, $stock) {
@@ -206,7 +205,7 @@ class IssueReturnController extends Controller
                 if (!$issueLine) continue;
                 $batch = StockBatch::where('purchase_line_id', $issueLine->purchase_line_id)->lockForUpdate()->first();
                 if ($batch) {
-                    $batch->qty_available = max(0, (int)$batch->qty_available - (int)$rl->quantity);
+                    $batch->qty_available = max(0, round((float)$batch->qty_available - (float)$rl->quantity, 4));
                     $batch->save();
                 }
             }
@@ -225,18 +224,18 @@ class IssueReturnController extends Controller
                 $line = $issueReturnTransaction->lines->firstWhere('id', (int)$row['id']);
                 if (!$line) continue;
 
-                $newQty = (int)$row['quantity'];
+                $newQty = round((float)$row['quantity'], 4);
 
                 // cannot return more than issued for that issue line
                 $issueLine = \App\Models\IssueLine::query()->find($line->issue_line_id);
                 if ($issueLine) {
-                    $issuedQty = (int)$issueLine->quantity;
+                    $issuedQty = (float)$issueLine->quantity;
                     // total returned excluding current line
-                    $already = \App\Models\IssueReturnLine::query()
+                    $already = (float) \App\Models\IssueReturnLine::query()
                         ->where('issue_line_id', $issueLine->id)
                         ->where('id','!=',$line->id)
                         ->sum('quantity');
-                    if ($newQty + (int)$already > $issuedQty) {
+                    if ($newQty + $already > $issuedQty) {
                         return back()->withErrors(['lines' => 'Return qty cannot exceed issued qty.'])->withInput();
                     }
                 }
@@ -249,18 +248,18 @@ class IssueReturnController extends Controller
                 // restore back to original batch
                 $batch = StockBatch::where('purchase_line_id', $issueLine?->purchase_line_id)->lockForUpdate()->first();
                 if ($batch) {
-                    $batch->qty_available = (int)$batch->qty_available + $newQty;
+                    $batch->qty_available = round((float)$batch->qty_available + $newQty, 4);
                     $batch->save();
                 }
 
                 // ledger (in)
-                $stock->addIssueReturnLedgerEntry([
+                $stock->addIssueReturnInLedgerEntry([
                     'txn_date' => $issueReturnTransaction->return_date,
                     'ref_id' => $issueReturnTransaction->id,
                     'ref_line_id' => $line->id,
                     'item_id' => $issueLine?->item_id,
                     'qty_in' => $newQty,
-                    'unit_price' => (int)$issueLine?->issue_price,
+                    'unit_price' => round((float)($issueLine?->issue_price ?? 0), 4),
                     'specification_snapshot' => $issueLine?->specification,
                     'created_by' => $issueReturnTransaction->created_by,
                 ]);
@@ -280,7 +279,7 @@ class IssueReturnController extends Controller
                 if (!$issueLine) continue;
                 $batch = StockBatch::where('purchase_line_id', $issueLine->purchase_line_id)->lockForUpdate()->first();
                 if ($batch) {
-                    $batch->qty_available = max(0, (int)$batch->qty_available - (int)$rl->quantity);
+                    $batch->qty_available = max(0, round((float)$batch->qty_available - (float)$rl->quantity, 4));
                     $batch->save();
                 }
             }

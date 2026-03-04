@@ -87,8 +87,8 @@
                             <div class="text-xs text-gray-600">{{ $r->item_name }}</div>
                         </td>
                         <td class="px-3 py-2 text-right">{{ number_format((float)$r->quantity, 3) }}</td>
-                        <td class="px-3 py-2 text-right">{{ number_format((float)$r->purchase_price, 2) }}</td>
-                        <td class="px-3 py-2 text-right font-semibold">{{ number_format((float)$r->line_total, 2) }}</td>
+                        <td class="px-3 py-2 text-right">{{ number_format((float)$r->purchase_price, 4) }}</td>
+                        <td class="px-3 py-2 text-right font-semibold">{{ number_format((float)$r->line_total, 4) }}</td>
                         <td class="px-3 py-2">{{ $r->created_by_name ?? '-' }}</td>
                         <td class="px-3 py-2 text-right">
                             <div class="inline-flex items-center gap-2">

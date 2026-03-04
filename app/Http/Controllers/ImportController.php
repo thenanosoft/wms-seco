@@ -26,9 +26,9 @@ class ImportController extends Controller
             'groups' => "group_code,group_name\nG001,General\nG002,Electrical\n",
             'items' => "group_code,item_code,name,default_spec,low_stock_threshold\nG001,ITM001,Sugar,1kg,10\nG002,ITM010,Wire,Coil,5\n",
             // Purchase import: group by reference_no
-            'purchases' => "purchase_date,supplier_name,reference_no,item_code,specification,quantity,purchase_price\n2026-02-07,ABC Supplier,PO-1001,ITM001,1kg,20,150\n2026-02-07,ABC Supplier,PO-1001,ITM010,Coil,5,0,\n",
+            'purchases' => "purchase_date,supplier_name,reference_no,group_code,item_code,specification,quantity,purchase_price\n2026-02-07,ABC Supplier,PO-1001,G001,ITM001,1kg,20,150\n2026-02-07,ABC Supplier,PO-1001,G002,ITM010,Coil,5,0,\n",
             // Issue import: system will allocate FIFO automatically
-            'issues' => "issue_date,issued_to,reference_no,item_code,specification,quantity\n2026-02-07,Counter,ISS-2001,ITM001,1kg,3\n",
+            'issues' => "issue_date,issued_to,reference_no,group_code,item_code,specification,quantity\n2026-02-07,Counter,ISS-2001,ITM001,1kg,3\n",
         ];
 
         if (!isset($samples[$type])) {
@@ -90,7 +90,7 @@ class ImportController extends Controller
                     }
 
                     Item::updateOrCreate(
-                        ['item_code' => $itemCode],
+                        ['group_id' => $group->id, 'item_code' => $itemCode],
                         [
                             'group_id' => $group->id,
                             'name' => trim((string)($r['name'] ?? '')),
@@ -130,12 +130,25 @@ class ImportController extends Controller
                     foreach ($lines as $ln) {
                         $itemCode = trim((string)($ln['item_code'] ?? ''));
                         if ($itemCode === '') continue;
-                        $item = Item::where('item_code', $itemCode)->first();
-                        if (!$item) {
-                            throw ValidationException::withMessages(['file' => "Unknown item_code: {$itemCode}"]);
+                        $itemQuery = Item::query()->where('item_code', $itemCode);
+                    $groupCodeLn = trim((string)($r['group_code'] ?? ''));
+                    if ($groupCodeLn !== '') {
+                        $g = Group::where('group_code', $groupCodeLn)->first();
+                        if (!$g) {
+                            throw ValidationException::withMessages(['file' => "Unknown group_code: {$groupCodeLn}"]);
                         }
+                        $itemQuery->where('group_id', $g->id);
+                    }
+                    $itemsFound = $itemQuery->get();
+                    if ($itemsFound->count() > 1 && $groupCodeLn === '') {
+                        throw ValidationException::withMessages(['file' => "Ambiguous item_code {$itemCode}. Please add group_code column in issues CSV."]);
+                    }
+                    $item = $itemsFound->first();
+                    if (!$item) {
+                        throw ValidationException::withMessages(['file' => "Unknown item_code: {$itemCode}"]);
+                    }
 
-                        $qty = (int)($ln['quantity'] ?? 0);
+                        $qty = round((float)($ln['quantity'] ?? 0), 4);
                         if ($qty <= 0) {
                             throw ValidationException::withMessages(['file' => "Invalid quantity for item {$itemCode}"]);
                         }
@@ -143,10 +156,10 @@ class ImportController extends Controller
                         $priceRaw = $ln['purchase_price'] ?? null;
                         $price = null;
                         if ($priceRaw !== null && $priceRaw !== '') {
-                            $price = (int)$priceRaw;
+                            $price = round((float)$priceRaw, 4);
                         }
 
-                        $lineTotal = $price !== null ? ($qty * $price) : 0;
+                        $lineTotal = $price !== null ? round($qty * $price, 4) : 0;
 
                         $purchaseLine = PurchaseLine::create([
                             'purchase_id' => $purchase->id,
@@ -193,18 +206,31 @@ class ImportController extends Controller
                 foreach ($rows as $r) {
                     $issueDate = (string)($r['issue_date'] ?? '');
                     $itemCode = trim((string)($r['item_code'] ?? ''));
-                    $qty = (int)($r['quantity'] ?? 0);
+                    $qty = round((float)($r['quantity'] ?? 0), 4);
 
                     if ($issueDate === '' || $itemCode === '' || $qty <= 0) {
                         continue;
                     }
 
-                    $item = Item::where('item_code', $itemCode)->first();
+                    $itemQuery = Item::query()->where('item_code', $itemCode);
+                    $groupCodeLn = trim((string)($r['group_code'] ?? ''));
+                    if ($groupCodeLn !== '') {
+                        $g = Group::where('group_code', $groupCodeLn)->first();
+                        if (!$g) {
+                            throw ValidationException::withMessages(['file' => "Unknown group_code: {$groupCodeLn}"]);
+                        }
+                        $itemQuery->where('group_id', $g->id);
+                    }
+                    $itemsFound = $itemQuery->get();
+                    if ($itemsFound->count() > 1 && $groupCodeLn === '') {
+                        throw ValidationException::withMessages(['file' => "Ambiguous item_code {$itemCode}. Please add group_code column in issues CSV."]);
+                    }
+                    $item = $itemsFound->first();
                     if (!$item) {
                         throw ValidationException::withMessages(['file' => "Unknown item_code: {$itemCode}"]);
                     }
 
-                    // Create single-issue per row if reference differs; otherwise we can group by reference
+// Create single-issue per row if reference differs; otherwise we can group by reference
                     $ref = trim((string)($r['reference_no'] ?? '')) ?: ('ISS-' . Str::upper(Str::random(6)));
 
                     $issue = Issue::create([
@@ -216,7 +242,7 @@ class ImportController extends Controller
                     ]);
 
                     // Validate available stock
-                    $available = (int)$stock->getAvailableStock($item->id);
+                    $available = (float)$stock->getAvailableStock($item->id);
                     if ($qty > $available) {
                         throw ValidationException::withMessages(['file' => "Not enough stock for {$itemCode}. Available {$available}"]);
                     }
@@ -228,15 +254,15 @@ class ImportController extends Controller
 
                     foreach ($allocations as $a) {
                         $batch = $a['batch'];
-                        $take = (int)$a['qty'];
+                        $take = round((float)$a['qty'], 4);
 
-                        $batch->qty_available = (int)$batch->qty_available - $take;
+                        $batch->qty_available = round((float)$batch->qty_available - $take, 4);
                         if ($batch->qty_available < 0) {
                             throw ValidationException::withMessages(['file' => 'Batch stock became negative.']);
                         }
                         $batch->save();
 
-                        $price = $batch->unit_price !== null ? (int)$batch->unit_price : 0;
+                        $price = $batch->unit_price !== null ? round((float)$batch->unit_price, 4) : 0;
 
                         $line = IssueLine::create([
                             'issue_id' => $issue->id,
@@ -245,7 +271,7 @@ class ImportController extends Controller
                             'specification' => trim((string)($r['specification'] ?? '')) ?: $batch->specification,
                             'issue_price' => $price,
                             'quantity' => $take,
-                            'line_total' => $take * $price,
+                            'line_total' => round($take * $price, 4),
                         ]);
 
                         $stock->addIssueLedgerEntry([

@@ -71,7 +71,7 @@
                                     <div class="font-medium">{{ $l->item->item_code }} - {{ $l->item->name }}</div>
                                     <div class="text-xs text-gray-500">Batch line: {{ $l->purchase_line_id }}</div>
                                 </td>
-                                <td class="px-4 py-3 text-right">{{ number_format($l->issue_price) }}</td>
+                                <td class="px-4 py-3 text-right">{{ number_format((float)$l->issue_price, 4) }}</td>
                                 <td class="px-4 py-3 text-right">{{ $l->quantity }}</td>
                                 <td class="px-4 py-3 text-right">{{ $retQty }}</td>
                                 <td class="px-4 py-3 text-right">
@@ -139,7 +139,7 @@
                                     <input type="text" class="w-72 rounded-lg border-gray-200" :name="`new_lines[${idx}][specification]`" x-model="r.specification" placeholder="Optional">
                                 </td>
                                 <td class="px-4 py-3 text-right">
-                                    <input type="number" min="0" step="1" class="w-24 rounded-lg border-gray-200 text-right" :name="`new_lines[${idx}][quantity]`" x-model.number="r.quantity">
+                                    <input type="number" min="0" step="0.0001" class="w-24 rounded-lg border-gray-200 text-right" :name="`new_lines[${idx}][quantity]`" x-model.number="r.quantity">
                                 </td>
                                 <td class="px-4 py-3 text-right">
                                     <button type="button" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50" @click="removeRow(idx)">Remove</button>

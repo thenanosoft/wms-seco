@@ -15,6 +15,12 @@ class ReturnLine extends Model
         'line_total',
     ];
 
+    protected $casts = [
+        'quantity' => 'float',
+        'line_total' => 'float',
+        'unit_price' => 'float',
+    ];
+
     public function transaction()
     {
         return $this->belongsTo(ReturnTransaction::class, 'return_transaction_id');

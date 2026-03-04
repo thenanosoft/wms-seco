@@ -32,11 +32,11 @@
         @foreach($rows as $r)
             @php($ret=(int)($r->returned_qty ?? 0))
             @php($net=max(0,(int)$r->quantity - $ret))
-            @php($netTotal = ($r->issue_price === null) ? 0 : ($net * (int)$r->issue_price))
+            @php($netTotal = ($r->issue_price === null) ? 0 : round($net * (float)$r->issue_price, 4))
             @php($tQty += (int)$r->quantity)
             @php($tRet += $ret)
             @php($tNet += $net)
-            @php($tAmount += (int)$netTotal)
+            @php($tAmount += (float)$netTotal)
             <tr>
                 <td>{{ $r->issue_date }}</td>
                 <td>{{ $r->issued_to }}</td>
@@ -50,10 +50,10 @@
                     @if($r->issue_price === null)
                         Pending
                     @else
-                        {{ number_format((float)$r->issue_price, 0) }}
+                        {{ number_format((float)$r->issue_price, 4) }}
                     @endif
                 </td>
-                <td class="right">{{ number_format((float)$netTotal, 0) }}</td>
+                <td class="right">{{ number_format((float)$netTotal, 4) }}</td>
                 <td>{{ $r->reference_no }}</td>
             </tr>
         @endforeach
@@ -63,7 +63,7 @@
                 <td class="right">{{ number_format($tRet,0) }}</td>
                 <td class="right">{{ number_format($tNet,0) }}</td>
                 <td></td>
-                <td class="right">{{ number_format($tAmount,0) }}</td>
+                <td class="right">{{ number_format($tAmount,4) }}</td>
                 <td></td>
             </tr>
         </tbody>

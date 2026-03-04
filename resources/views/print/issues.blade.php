@@ -56,10 +56,10 @@
                     @if($r->issue_price === null)
                         Pending
                     @else
-                        {{ number_format((float)$r->issue_price, 0) }}
+                        {{ number_format((float)$r->issue_price, 4) }}
                     @endif
                 </td>
-                <td class="right">{{ number_format($netTotal, 0) }}</td>
+                <td class="right">{{ number_format($netTotal, 4) }}</td>
                 <td>{{ $r->issued_to }}</td>
                 <td>{{ $r->reference_no }}</td>
             </tr>
@@ -71,7 +71,7 @@
                 <td class="right">{{ number_format($tNet,0) }}</td>
                 <td></td>
                 <td></td>
-                <td class="right">{{ number_format($tAmount,0) }}</td>
+                <td class="right">{{ number_format($tAmount,4) }}</td>
                 <td></td>
                 <td></td>
             </tr>

@@ -20,6 +20,12 @@ class PurchaseReturnLine extends Model
         'line_total',
     ];
 
+    protected $casts = [
+        'quantity' => 'float',
+        'line_total' => 'float',
+        'purchase_price' => 'float',
+    ];
+
     public function transaction(): BelongsTo
     {
         return $this->belongsTo(PurchaseReturnTransaction::class, 'purchase_return_transaction_id');

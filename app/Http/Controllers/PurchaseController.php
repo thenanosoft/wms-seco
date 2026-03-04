@@ -84,10 +84,10 @@ class PurchaseController extends Controller
             ]);
 
             foreach ($validated['lines'] as $line) {
-                $qty = (int)$line['quantity'];
+                $qty = round((float)$line['quantity'], 4);
                 $rawPrice = $line['purchase_price'] ?? null;
-                $price = ($rawPrice === null || $rawPrice === '' || (is_numeric($rawPrice) && (float)$rawPrice <= 0)) ? null : (int)$rawPrice;
-                $total = $price !== null ? ($qty * $price) : 0;
+                $price = ($rawPrice === null || $rawPrice === '' || (is_numeric($rawPrice) && (float)$rawPrice <= 0)) ? null : round((float)$rawPrice, 4);
+                $total = $price !== null ? round($qty * $price, 4) : 0;
 
                 $purchaseLine = PurchaseLine::create([
                     'purchase_id' => $purchase->id,
@@ -154,8 +154,8 @@ class PurchaseController extends Controller
             'lines.*.item_id' => ['required','integer','exists:items,id'],
             'lines.*.specification' => ['nullable','string','max:2000'],
             // 0 or empty means pending
-            'lines.*.purchase_price' => ['nullable','numeric','min:0'],
-            'lines.*.quantity' => ['required','integer','min:1'],
+            'lines.*.purchase_price' => ['nullable','numeric','min:0', 'regex:/^\d+(\.\d{1,4})?$/'],
+            'lines.*.quantity' => ['required','numeric','min:0.0001', 'regex:/^\d+(\.\d{1,4})?$/'],
         ]);
 
         try {
@@ -171,10 +171,10 @@ class PurchaseController extends Controller
 
                 foreach ($data['lines'] as $row) {
                     $lineId = $row['id'] ?? null;
-                    $qty = (int)$row['quantity'];
+                    $qty = round((float)$row['quantity'], 4);
 
                     $rawPrice = $row['purchase_price'] ?? null;
-                    $price = ($rawPrice === null || $rawPrice === '' || (is_numeric($rawPrice) && (float)$rawPrice <= 0)) ? null : (int)$rawPrice;
+                    $price = ($rawPrice === null || $rawPrice === '' || (is_numeric($rawPrice) && (float)$rawPrice <= 0)) ? null : round((float)$rawPrice, 4);
 
                     if ($lineId) {
                         /** @var \App\Models\PurchaseLine $line */
@@ -196,7 +196,7 @@ class PurchaseController extends Controller
                         $fifo->updateBatchQuantityFromPurchaseLine($batch, $qty);
 
                         $newItemId = (int)$row['item_id'];
-                        $consumed = (int)$batch->qty_purchased - (int)$batch->qty_available;
+                        $consumed = (float)$batch->qty_purchased - (float)$batch->qty_available;
                         if ($newItemId !== (int)$line->item_id && $consumed > 0) {
                             throw \Illuminate\Validation\ValidationException::withMessages([
                                 'lines' => 'Cannot change item on a purchase line that already has issued/consumed stock.',
@@ -207,7 +207,7 @@ class PurchaseController extends Controller
                         $line->specification = $row['specification'] ?? null;
                         $line->quantity = $qty;
                         $line->purchase_price = $price; // mutator will set null for 0/empty
-                        $line->line_total = $price !== null ? ($qty * $price) : 0;
+                        $line->line_total = $price !== null ? round($qty * $price, 4) : 0;
                         $line->save();
 
                         // Update batch meta
@@ -235,7 +235,7 @@ class PurchaseController extends Controller
                         $fifo->propagateBatchPrice($line->id, $price);
                     } else {
                         // Add new item later to same purchase
-                        $total = $price !== null ? ($qty * $price) : 0;
+                        $total = $price !== null ? round($qty * $price, 4) : 0;
                         $newLine = \App\Models\PurchaseLine::create([
                             'purchase_id' => $purchase->id,
                             'item_id' => (int)$row['item_id'],

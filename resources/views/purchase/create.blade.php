@@ -152,7 +152,7 @@
                                 </td>
 
                                 <td class="px-3 py-2">
-                                    <input type="number" step="1" min="0"
+                                    <input type="number" step="0.0001" min="0"
                                            class="w-28 rounded-lg border-gray-200"
                                            :name="`lines[${idx}][purchase_price]`"
                                            x-model="line.purchase_price"
@@ -164,7 +164,7 @@
                                 </td>
 
                                 <td class="px-3 py-2">
-                                    <input type="number" step="1" min="1"
+                                    <input type="number" step="0.0001" min="0.0001"
                                            class="w-24 rounded-lg border-gray-200"
                                            :name="`lines[${idx}][quantity]`"
                                            x-model.number="line.quantity"
@@ -325,17 +325,17 @@
             const line = this.lines[idx];
             const price = Number(line.purchase_price || 0);
             const qty = Number(line.quantity || 0);
-            line.line_total = Math.round(price * qty * 100) / 100;
+            line.line_total = Math.round(price * qty * 10000) / 10000;
             this.recalcAll();
         },
 
         recalcAll() {
             this.grandTotal = this.lines.reduce((sum, l) => sum + Number(l.line_total || 0), 0);
-            this.grandTotal = Math.round(this.grandTotal * 100) / 100;
+            this.grandTotal = Math.round(this.grandTotal * 10000) / 10000;
         },
 
         formatMoney(v) {
-            return Number(v || 0).toFixed(2);
+            return Number(v || 0).toFixed(4);
         }
     }
 }

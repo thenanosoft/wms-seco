@@ -69,9 +69,9 @@
                                     <div class="text-xs text-gray-500">Issue Line #{{ $l->issue_line_id }}</div>
                                     <input type="hidden" name="lines[{{ $idx }}][id]" value="{{ $l->id }}">
                                 </td>
-                                <td class="px-4 py-2 text-right">{{ number_format((float)($issueLine?->issue_price ?? 0), 0) }}</td>
+                                <td class="px-4 py-2 text-right">{{ number_format((float)($issueLine?->issue_price ?? 0), 4) }}</td>
                                 <td class="px-4 py-2 text-right">
-                                    <input type="number" min="0" step="1" class="w-24 rounded-lg border-gray-200 text-right"
+                                    <input type="number" min="0" step="0.0001" class="w-24 rounded-lg border-gray-200 text-right"
                                            name="lines[{{ $idx }}][quantity]"
                                            value="{{ old('lines.'.$idx.'.quantity', (int)$l->quantity) }}" required>
                                 </td>

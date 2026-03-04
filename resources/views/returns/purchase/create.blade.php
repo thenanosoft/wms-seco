@@ -92,7 +92,7 @@
                                     <td class="px-3 py-2 text-right font-semibold">{{ number_format($l['max_return_qty'], 0) }}</td>
                                     <td class="px-3 py-2 text-right">
                                         <input type="hidden" name="lines[{{ $idx }}][purchase_line_id]" value="{{ $l['line_id'] }}">
-                                        <input type="number" step="1" min="0" max="{{ $l['max_return_qty'] }}"
+                                        <input type="number" step="0.0001" min="0" max="{{ $l['max_return_qty'] }}"
                                                name="lines[{{ $idx }}][quantity]"
                                                value="{{ old("lines.$idx.quantity", 0) }}"
                                                class="w-28 rounded-lg border-gray-200 text-right">

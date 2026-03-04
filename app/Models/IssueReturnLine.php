@@ -20,6 +20,12 @@ class IssueReturnLine extends Model
         'line_total',
     ];
 
+    protected $casts = [
+        'quantity' => 'float',
+        'line_total' => 'float',
+        'issue_price' => 'float',
+    ];
+
     public function transaction(): BelongsTo
     {
         return $this->belongsTo(IssueReturnTransaction::class, 'issue_return_transaction_id');

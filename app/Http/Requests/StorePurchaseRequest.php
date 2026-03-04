@@ -23,10 +23,9 @@ class StorePurchaseRequest extends FormRequest
             'lines.*.group_id' => ['required', 'integer', 'exists:groups,id'],
             'lines.*.item_id' => ['required', 'integer', 'exists:items,id'],
             'lines.*.specification' => ['nullable', 'string', 'max:2000'],
-            // Business rule: quantities & prices are integers only (no decimals)
-            // Price can be pending until invoice arrives.
-            'lines.*.purchase_price' => ['nullable', 'integer', 'min:0'],
-            'lines.*.quantity' => ['required', 'integer', 'min:1'],
+            // Price can be pending until invoice arrives. Up to 4 decimal places.
+            'lines.*.purchase_price' => ['nullable', 'numeric', 'min:0', 'regex:/^\d+(\.\d{1,4})?$/'],
+            'lines.*.quantity' => ['required', 'numeric', 'min:0.0001', 'regex:/^\d+(\.\d{1,4})?$/'],
         ];
     }
 

@@ -71,14 +71,16 @@ if (($data['type'] ?? null) === 'OUT') {
 
             foreach ($data['lines'] as $line) {
 
-                $total = $line['quantity'] * ($line['unit_price'] ?? 0);
+                $qty = round((float)$line['quantity'], 4);
+                $price = isset($line['unit_price']) ? round((float)$line['unit_price'], 4) : 0;
+                $total = round($qty * $price, 4);
 
                 $rl = ReturnLine::create([
                     'return_transaction_id' => $ret->id,
                     'item_id' => $line['item_id'],
                     'specification' => $line['specification'] ?? null,
-                    'unit_price' => $line['unit_price'] ?? 0,
-                    'quantity' => $line['quantity'],
+                    'unit_price' => $price,
+                    'quantity' => $qty,
                     'line_total' => $total,
                 ]);
 

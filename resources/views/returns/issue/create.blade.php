@@ -85,13 +85,13 @@
                                     <td class="px-3 py-2">{{ $l['group_code'] }}</td>
                                     <td class="px-3 py-2">{{ $l['item_code'] }} - {{ $l['item_name'] }}</td>
                                     <td class="px-3 py-2">{{ $l['specification'] }}</td>
-                                    <td class="px-3 py-2 text-right">{{ number_format($l['issue_price'], 0) }}</td>
+                                    <td class="px-3 py-2 text-right">{{ number_format((float)$l['issue_price'], 4) }}</td>
                                     <td class="px-3 py-2 text-right">{{ number_format($l['issued_qty'], 0) }}</td>
                                     <td class="px-3 py-2 text-right">{{ number_format($l['returned_qty'], 0) }}</td>
                                     <td class="px-3 py-2 text-right font-semibold">{{ number_format($l['remaining_qty'], 0) }}</td>
                                     <td class="px-3 py-2 text-right">
                                         <input type="hidden" name="lines[{{ $idx }}][issue_line_id]" value="{{ $l['line_id'] }}">
-                                        <input type="number" step="1" min="0" max="{{ $l['remaining_qty'] }}"
+                                        <input type="number" step="0.0001" min="0" max="{{ $l['remaining_qty'] }}"
                                                name="lines[{{ $idx }}][quantity]"
                                                value="{{ old("lines.$idx.quantity", 0) }}"
                                                class="w-28 rounded-lg border-gray-200 text-right">

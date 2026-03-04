@@ -20,6 +20,12 @@ class IssueLine extends Model
         'line_total',
     ];
 
+    protected $casts = [
+        'quantity' => 'float',
+        'line_total' => 'float',
+        'issue_price' => 'float',
+    ];
+
     public function purchaseLine(): BelongsTo
     {
         return $this->belongsTo(PurchaseLine::class);
