@@ -370,17 +370,18 @@ validateQty(idx) {
                 total = Number(line.display_price || 0) * qty;
             }
 
-            line.line_total = Math.round(total * 100) / 100;
+            line.line_total = total;
             this.recalcAll();
         },
 
         recalcAll() {
             this.grandTotal = this.lines.reduce((sum, l) => sum + Number(l.line_total || 0), 0);
-            this.grandTotal = Math.round(this.grandTotal * 100) / 100;
         },
 
         formatMoney(v) {
-            return Number(v || 0).toFixed(4);
+            const n = Number(v || 0);
+            if (!Number.isFinite(n)) return '0';
+            return n.toLocaleString('en-US', { useGrouping: false, maximumFractionDigits: 20 });
         }
     }
 }

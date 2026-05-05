@@ -1,7 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-7xl mx-auto space-y-6">
+<div class="max-w-7xl mx-auto space-y-6" x-data="purchaseItemsFilters({
+    allItems: @js($items->map(fn($it) => ['id' => $it->id, 'group_id' => $it->group_id, 'item_code' => $it->item_code, 'name' => $it->name])),
+    selectedGroupId: @js(request('group_id')),
+    selectedItemId: @js(request('item_id')),
+})">
 
     <div>
         <h1 class="text-2xl font-semibold">Purchase Items</h1>
@@ -22,7 +26,7 @@
 
     <!-- Filters -->
     <form method="GET" class="rounded-xl border bg-white p-4 grid grid-cols-1 md:grid-cols-5 gap-4">
-        <select name="group_id" class="rounded-lg border-gray-200">
+        <select name="group_id" class="rounded-lg border-gray-200" x-model="selectedGroupId">
             <option value="">All Groups</option>
             @foreach($groups as $g)
                 <option value="{{ $g->id }}" @selected(request('group_id') == $g->id)>
@@ -31,13 +35,11 @@
             @endforeach
         </select>
 
-        <select name="item_id" class="rounded-lg border-gray-200">
+        <select name="item_id" class="rounded-lg border-gray-200" x-model="selectedItemId">
             <option value="">All Items</option>
-            @foreach($items as $i)
-                <option value="{{ $i->id }}" @selected(request('item_id') == $i->id)>
-                    {{ $i->item_code }} - {{ $i->name }}
-                </option>
-            @endforeach
+            <template x-for="it in filteredItems" :key="it.id">
+                <option :value="String(it.id)" x-text="`${it.item_code} - ${it.name}`"></option>
+            </template>
         </select>
 
         <input type="date" name="from" value="{{ request('from') }}" class="rounded-lg border-gray-200">
@@ -71,16 +73,16 @@
                                 {{ $r->item_code }} - {{ $r->item_name }}
                             </a>
                         </td>
-                        <td class="px-4 py-2 text-right">{{ number_format((float)$r->quantity, 4) }}</td>
+                        <td class="px-4 py-2 text-right">{{ rtrim(rtrim(number_format((float)$r->quantity, 8, '.', ''), '0'), '.') }}</td>
                         <td class="px-4 py-2 text-right">
                             @if($r->purchase_price === null)
                                 <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">PENDING</span>
                             @else
-                                {{ number_format((float)$r->purchase_price, 4) }}
+                                {{ rtrim(rtrim(number_format((float)$r->purchase_price, 8, '.', ''), '0'), '.') }}
                             @endif
                         </td>
                         <td class="px-4 py-2 text-right font-semibold">
-                            {{ number_format((float)$r->line_total, 4) }}
+                            {{ rtrim(rtrim(number_format((float)$r->line_total, 8, '.', ''), '0'), '.') }}
                         </td>
                     </tr>
                 @endforeach
@@ -90,4 +92,30 @@
 
     {{ $rows->links() }}
 </div>
+
+<script>
+function purchaseItemsFilters({ allItems, selectedGroupId, selectedItemId }) {
+    return {
+        allItems: Array.isArray(allItems) ? allItems : [],
+        filteredItems: [],
+        selectedGroupId: selectedGroupId ? String(selectedGroupId) : '',
+        selectedItemId: selectedItemId ? String(selectedItemId) : '',
+        init() {
+            this.rebuildFilteredItems();
+            this.$watch('selectedGroupId', () => {
+                this.rebuildFilteredItems();
+                const exists = this.filteredItems.some(it => String(it.id) === String(this.selectedItemId));
+                if (!exists) this.selectedItemId = '';
+            });
+        },
+        rebuildFilteredItems() {
+            if (!this.selectedGroupId) {
+                this.filteredItems = this.allItems;
+                return;
+            }
+            this.filteredItems = this.allItems.filter(it => String(it.group_id) === String(this.selectedGroupId));
+        },
+    };
+}
+</script>
 @endsection

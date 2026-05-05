@@ -43,6 +43,6 @@ class PurchaseLine extends Model
             $this->attributes["purchase_price"] = null;
             return;
         }
-        $this->attributes["purchase_price"] = round((float) $value, 4);
+        $this->attributes["purchase_price"] = (float) $value;
     }
 }

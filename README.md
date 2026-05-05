@@ -10,6 +10,9 @@ Modules included:
 - User Roles (Admin / Store Helper)
 - Export (CSV / PDF / Print)
 
+## Pehle se data hai / GitHub se update lena
+Agar program pehle se chal raha hai aur DB mein data hai: **seed mat chalao**. Sirf code extract/clone karke `php artisan migrate` chalao (sirf nayi migrations run Hongi, data safe rahega). Detail: **`docs/UPDATE_FROM_GITHUB.md`**
+
 ## Quick start (Windows)
 1. Extract the ZIP to a clean folder (example: `C:\Projects\wms`)
 2. Follow: `WINDOWS_INSTALLATION_GUIDE.md`

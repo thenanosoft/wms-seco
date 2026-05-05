@@ -21,6 +21,13 @@ class PurchaseController extends Controller
     {
         $q = Purchase::query()
             ->with('creator')
+            ->with([
+                'lines' => function ($qq) {
+                    $qq->select(['id', 'purchase_id', 'item_id', 'quantity', 'purchase_price', 'line_total'])
+                        ->with(['item:id,item_code,name'])
+                        ->orderBy('id');
+                },
+            ])
             ->withCount([
                 'lines as pending_prices_count' => function ($qq) {
                     $qq->whereNull('purchase_price');
@@ -84,10 +91,10 @@ class PurchaseController extends Controller
             ]);
 
             foreach ($validated['lines'] as $line) {
-                $qty = round((float)$line['quantity'], 4);
+                $qty = (float)$line['quantity'];
                 $rawPrice = $line['purchase_price'] ?? null;
-                $price = ($rawPrice === null || $rawPrice === '' || (is_numeric($rawPrice) && (float)$rawPrice <= 0)) ? null : round((float)$rawPrice, 4);
-                $total = $price !== null ? round($qty * $price, 4) : 0;
+                $price = ($rawPrice === null || $rawPrice === '' || (is_numeric($rawPrice) && (float)$rawPrice <= 0)) ? null : (float)$rawPrice;
+                $total = $price !== null ? $qty * $price : 0;
 
                 $purchaseLine = PurchaseLine::create([
                     'purchase_id' => $purchase->id,
@@ -154,7 +161,7 @@ class PurchaseController extends Controller
             'lines.*.item_id' => ['required','integer','exists:items,id'],
             'lines.*.specification' => ['nullable','string','max:2000'],
             // 0 or empty means pending
-            'lines.*.purchase_price' => ['nullable','numeric','min:0', 'regex:/^\d+(\.\d{1,4})?$/'],
+            'lines.*.purchase_price' => ['nullable','numeric','min:0', 'regex:/^\d+(\.\d{1,8})?$/'],
             'lines.*.quantity' => ['required','numeric','min:0.0001', 'regex:/^\d+(\.\d{1,4})?$/'],
         ]);
 
@@ -171,10 +178,10 @@ class PurchaseController extends Controller
 
                 foreach ($data['lines'] as $row) {
                     $lineId = $row['id'] ?? null;
-                    $qty = round((float)$row['quantity'], 4);
+                    $qty = (float)$row['quantity'];
 
                     $rawPrice = $row['purchase_price'] ?? null;
-                    $price = ($rawPrice === null || $rawPrice === '' || (is_numeric($rawPrice) && (float)$rawPrice <= 0)) ? null : round((float)$rawPrice, 4);
+                    $price = ($rawPrice === null || $rawPrice === '' || (is_numeric($rawPrice) && (float)$rawPrice <= 0)) ? null : (float)$rawPrice;
 
                     if ($lineId) {
                         /** @var \App\Models\PurchaseLine $line */
@@ -207,7 +214,7 @@ class PurchaseController extends Controller
                         $line->specification = $row['specification'] ?? null;
                         $line->quantity = $qty;
                         $line->purchase_price = $price; // mutator will set null for 0/empty
-                        $line->line_total = $price !== null ? round($qty * $price, 4) : 0;
+                        $line->line_total = $price !== null ? $qty * $price : 0;
                         $line->save();
 
                         // Update batch meta
@@ -235,7 +242,7 @@ class PurchaseController extends Controller
                         $fifo->propagateBatchPrice($line->id, $price);
                     } else {
                         // Add new item later to same purchase
-                        $total = $price !== null ? round($qty * $price, 4) : 0;
+                        $total = $price !== null ? $qty * $price : 0;
                         $newLine = \App\Models\PurchaseLine::create([
                             'purchase_id' => $purchase->id,
                             'item_id' => (int)$row['item_id'],

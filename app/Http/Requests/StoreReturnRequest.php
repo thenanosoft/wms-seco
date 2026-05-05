@@ -23,7 +23,7 @@ class StoreReturnRequest extends FormRequest
             'lines' => ['required','array','min:1'],
             'lines.*.item_id' => ['required','exists:items,id'],
             'lines.*.quantity' => ['required','numeric','min:0.0001', 'regex:/^\d+(\.\d{1,4})?$/'],
-            'lines.*.unit_price' => ['nullable','numeric','min:0', 'regex:/^\d+(\.\d{1,4})?$/'],
+            'lines.*.unit_price' => ['nullable','numeric','min:0', 'regex:/^\d+(\.\d{1,8})?$/'],
         ];
     }
 }

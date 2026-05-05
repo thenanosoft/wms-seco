@@ -59,16 +59,16 @@
                                 {{ optional($line->item)->item_code }} - {{ optional($line->item)->name }}
                             </a>
                         </td>
-                        <td class="px-4 py-2 text-right">{{ number_format((float)$line->quantity, 4) }}</td>
+                        <td class="px-4 py-2 text-right">{{ rtrim(rtrim(number_format((float)$line->quantity, 8, '.', ''), '0'), '.') }}</td>
                         <td class="px-4 py-2 text-right">
                             @if($line->purchase_price === null)
                                 <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">PRICE PENDING</span>
                             @else
-                                {{ number_format((float) $line->purchase_price, 4) }}
+                                {{ rtrim(rtrim(number_format((float)$line->purchase_price, 8, '.', ''), '0'), '.') }}
                             @endif
                         </td>
                         <td class="px-4 py-2 text-right">{{ $line->specification ?: '' }}</td>
-                        <td class="px-4 py-2 text-right">{{ number_format((float) ($line->line_total ?? 0), 4) }}</td>
+                        <td class="px-4 py-2 text-right">{{ rtrim(rtrim(number_format((float)($line->line_total ?? 0), 8, '.', ''), '0'), '.') }}</td>
                     </tr>
                 @endforeach
             </tbody>

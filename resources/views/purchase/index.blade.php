@@ -64,57 +64,114 @@
                         <th class="px-4 py-3 text-right font-semibold">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100">
-                    @forelse($purchases as $p)
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-4 py-3 text-left"><a href="{{ route('purchases.show', $p) }}" class="text-indigo-600 hover:underline">#{{ $p->id }}</a></td>
-                            <td class="px-4 py-3 whitespace-nowrap">
-                                    {{ $p->purchase_date->format('Y-m-d') }}
-                            </td>
-                            <td class="px-4 py-3">{{ $p->supplier_name ?? '-' }}</td>
-                            <td class="px-4 py-3">{{ $p->reference_no ?? '-' }}</td>
-                            <td class="px-4 py-3">{{ $p->creator?->name ?? '-' }}</td>
-                            <td class="px-4 py-3">
-                                @if((int)($p->pending_prices_count ?? 0) > 0)
-                                    <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
-                                        {{ (int)$p->pending_prices_count }} pending
-                                    </span>
-                                @else
-                                    <span class="text-xs text-gray-500">OK</span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 text-right">
-                                <div class="inline-flex items-center gap-2">
-                                    <a href="{{ route('purchases.edit', $p) }}" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50" title="Edit">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4">
-                                            <path d="M12 20h9" />
-                                            <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-                                        </svg>
-                                    </a>
-                                    <form action="{{ route('purchases.destroy', $p) }}" method="POST" onsubmit="return confirm('Delete this purchase? If stock was issued from this purchase, all related issues/returns will also be deleted.')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 text-red-700 hover:bg-red-50" title="Delete">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4">
-                                                <path d="M3 6h18" />
-                                                <path d="M8 6V4h8v2" />
-                                                <path d="M6 6l1 16h10l1-16" />
-                                                <path d="M10 11v6" />
-                                                <path d="M14 11v6" />
+                @if($purchases->count())
+                    @foreach($purchases as $p)
+                        <tbody x-data="{ openQuick: false }" class="divide-y divide-gray-100">
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-3 text-left">
+                                    <div class="inline-flex items-center gap-2">
+                                        <a href="{{ route('purchases.show', $p) }}" class="text-indigo-600 hover:underline">#{{ $p->id }}</a>
+                                        <button type="button"
+                                                class="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-xs hover:bg-gray-50"
+                                                @click="openQuick = !openQuick">
+                                            Quick View
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4 transition-transform" :class="openQuick ? 'rotate-180' : ''">
+                                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
                                             </svg>
                                         </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                        {{ $p->purchase_date->format('Y-m-d') }}
+                                </td>
+                                <td class="px-4 py-3">{{ $p->supplier_name ?? '-' }}</td>
+                                <td class="px-4 py-3">{{ $p->reference_no ?? '-' }}</td>
+                                <td class="px-4 py-3">{{ $p->creator?->name ?? '-' }}</td>
+                                <td class="px-4 py-3">
+                                    @if((int)($p->pending_prices_count ?? 0) > 0)
+                                        <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+                                            {{ (int)$p->pending_prices_count }} pending
+                                        </span>
+                                    @else
+                                        <span class="text-xs text-gray-500">OK</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 text-right">
+                                    <div class="inline-flex items-center gap-2">
+                                        <a href="{{ route('purchases.edit', $p) }}" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50" title="Edit">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4">
+                                                <path d="M12 20h9" />
+                                                <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                                            </svg>
+                                        </a>
+                                        <form action="{{ route('purchases.destroy', $p) }}" method="POST" onsubmit="return confirm('Delete this purchase? If stock was issued from this purchase, all related issues/returns will also be deleted.')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 text-red-700 hover:bg-red-50" title="Delete">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4">
+                                                    <path d="M3 6h18" />
+                                                    <path d="M8 6V4h8v2" />
+                                                    <path d="M6 6l1 16h10l1-16" />
+                                                    <path d="M10 11v6" />
+                                                    <path d="M14 11v6" />
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr x-show="openQuick" x-cloak>
+                                <td colspan="7" class="bg-gray-50 px-4 py-3">
+                                    <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+                                        <div class="px-3 py-2 border-b text-xs font-semibold text-gray-600">
+                                            Quick View - Purchase #{{ $p->id }} Items
+                                        </div>
+                                        <div class="overflow-x-auto">
+                                            <table class="min-w-full text-xs">
+                                                <thead class="bg-gray-50 text-gray-600">
+                                                    <tr>
+                                                        <th class="px-3 py-2 text-left font-semibold">Item</th>
+                                                        <th class="px-3 py-2 text-right font-semibold">Qty</th>
+                                                        <th class="px-3 py-2 text-right font-semibold">Unit Price</th>
+                                                        <th class="px-3 py-2 text-right font-semibold">Line Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-gray-100">
+                                                    @forelse($p->lines as $line)
+                                                        <tr>
+                                                            <td class="px-3 py-2">{{ $line->item?->item_code }} - {{ $line->item?->name }}</td>
+                                                            <td class="px-3 py-2 text-right">{{ rtrim(rtrim(number_format((float)$line->quantity, 8, '.', ''), '0'), '.') }}</td>
+                                                            <td class="px-3 py-2 text-right">
+                                                                @if($line->purchase_price === null)
+                                                                    <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">PENDING</span>
+                                                                @else
+                                                                    {{ number_format((float)$line->purchase_price, 4) }}
+                                                                @endif
+                                                            </td>
+                                                            <td class="px-3 py-2 text-right font-medium">{{ number_format((float)$line->line_total, 4) }}</td>
+                                                        </tr>
+                                                    @empty
+                                                        <tr>
+                                                            <td colspan="4" class="px-3 py-3 text-center text-gray-500">No items found.</td>
+                                                        </tr>
+                                                    @endforelse
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    @endforeach
+                @else
+                    <tbody class="divide-y divide-gray-100">
                         <tr>
                             <td class="px-4 py-6 text-center text-gray-600" colspan="7">
                                 No purchases yet.
                             </td>
                         </tr>
-                    @endforelse
-                </tbody>
+                    </tbody>
+                @endif
             </table>
         </div>
     </div>

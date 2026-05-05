@@ -29,8 +29,8 @@
                 <td>{{ $r->item_code }} - {{ $r->item_name }}</td>
                 <td>{{ $r->specification }}</td>
                 <td class="right">{{ $r->quantity }}</td>
-                <td class="right">{{ number_format((float)$r->purchase_price, 4) }}</td>
-                <td class="right">{{ number_format((float)$r->line_total, 4) }}</td>
+                <td class="right">{{ rtrim(rtrim(number_format((float)$r->purchase_price, 8, '.', ''), '0'), '.') }}</td>
+                <td class="right">{{ rtrim(rtrim(number_format((float)$r->line_total, 8, '.', ''), '0'), '.') }}</td>
             </tr>
         @endforeach
         </tbody>

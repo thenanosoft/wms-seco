@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -11,7 +10,7 @@ class BalanceReportController extends Controller
 {
     public function index(Request $request)
     {
-        [$from, $to] = $this->resolveDateRange($request);
+        [$from, $to, $range] = $this->resolveDateRange($request);
 
         $query = DB::table('stock_ledger')
             ->join('items', 'items.id', '=', 'stock_ledger.item_id')
@@ -29,6 +28,13 @@ class BalanceReportController extends Controller
                 DB::raw("SUM(CASE WHEN stock_ledger.txn_type = 'ISSUE_RETURN_IN' THEN (stock_ledger.qty_in * IFNULL(stock_ledger.unit_price,0)) ELSE 0 END) as issue_return_amount"),
                 DB::raw("SUM(CASE WHEN stock_ledger.txn_type = 'PURCHASE_RETURN_OUT' THEN stock_ledger.qty_out ELSE 0 END) as purchase_return_qty"),
                 DB::raw("SUM(CASE WHEN stock_ledger.txn_type = 'PURCHASE_RETURN_OUT' THEN (stock_ledger.qty_out * IFNULL(stock_ledger.unit_price,0)) ELSE 0 END) as purchase_return_amount"),
+                DB::raw("(SELECT sl2.unit_price
+                    FROM stock_ledger sl2
+                    WHERE sl2.item_id = items.id
+                      AND sl2.unit_price IS NOT NULL
+                      AND sl2.unit_price > 0
+                    ORDER BY sl2.txn_date DESC, sl2.id DESC
+                    LIMIT 1) as latest_known_price"),
             ])
             ->when($from, fn($q) => $q->whereDate('stock_ledger.txn_date', '>=', $from))
             ->when($to, fn($q) => $q->whereDate('stock_ledger.txn_date', '<=', $to));
@@ -54,10 +60,10 @@ class BalanceReportController extends Controller
             ->orderBy('items.item_code')
             ->get()
             ->map(function ($r) {
-                $p = (int)$r->purchased_qty;
-                $i = (int)$r->issued_qty;
-                $ir = (int)$r->issue_return_qty;
-                $pr = (int)$r->purchase_return_qty;
+                $p = (float)$r->purchased_qty;
+                $i = (float)$r->issued_qty;
+                $ir = (float)$r->issue_return_qty;
+                $pr = (float)$r->purchase_return_qty;
                 $r->net_balance = $p + $ir - $i - $pr;
 
                 $pa = (float)($r->purchased_amount ?? 0);
@@ -65,13 +71,20 @@ class BalanceReportController extends Controller
                 $ira = (float)($r->issue_return_amount ?? 0);
                 $pra = (float)($r->purchase_return_amount ?? 0);
                 $r->net_amount = $pa + $ira - $ia - $pra;
+                $latestKnownPrice = (float)($r->latest_known_price ?? 0);
+                $r->per_item_price = $r->net_balance != 0.0 ? ($r->net_amount / $r->net_balance) : $latestKnownPrice;
                 return $r;
             });
 
         $groups = DB::table('groups')->orderBy('group_code')->get(['id', 'group_code']);
-        $items = DB::table('items')->orderBy('item_code')->get(['id', 'item_code', 'name']);
+        $allItems = DB::table('items')->orderBy('item_code')->get(['id', 'group_id', 'item_code', 'name']);
 
-        return view('reports.balance', compact('rows', 'groups', 'items', 'from', 'to'));
+        $selectedGroupId = $request->filled('group_id') ? (int)$request->group_id : null;
+        $items = $selectedGroupId
+            ? $allItems->where('group_id', $selectedGroupId)->values()
+            : $allItems;
+
+        return view('reports.balance', compact('rows', 'groups', 'items', 'allItems', 'from', 'to', 'range'));
     }
 
     public function csv(Request $request)
@@ -91,24 +104,19 @@ class BalanceReportController extends Controller
                 'Group', 'Item Code', 'Item Name',
                 'Purchased Qty', 'Purchased Amount',
                 'Issued Qty', 'Issued Amount',
-                'Issue Return Qty', 'Issue Return Amount',
-                'Purchase Return Qty', 'Purchase Return Amount',
-                'Net Balance', 'Net Amount'
+                'Net Balance', 'Per Item Price', 'Net Amount'
             ]);
             foreach ($data as $r) {
                 fputcsv($out, [
                     (string)($r->group_code ?? ''),
                     (string)$r->item_code,
                     (string)$r->item_name,
-                    (int)$r->purchased_qty,
+                    (float)$r->purchased_qty,
                     (float)($r->purchased_amount ?? 0),
-                    (int)$r->issued_qty,
+                    (float)$r->issued_qty,
                     (float)($r->issued_amount ?? 0),
-                    (int)$r->issue_return_qty,
-                    (float)($r->issue_return_amount ?? 0),
-                    (int)$r->purchase_return_qty,
-                    (float)($r->purchase_return_amount ?? 0),
-                    (int)$r->net_balance,
+                    (float)$r->net_balance,
+                    (float)($r->per_item_price ?? 0),
                     (float)($r->net_amount ?? 0),
                 ]);
             }
@@ -147,35 +155,53 @@ class BalanceReportController extends Controller
 
     private function resolveDateRange(Request $request): array
     {
-        $range = $request->get('range', 'today');
+        $range = (string)$request->get('range', 'all');
+        $dateTouched = $request->boolean('date_touched');
         $tz = config('app.timezone') ?: 'Asia/Karachi';
         $now = now($tz);
 
         $from = null;
         $to = null;
 
+        // If user manually selects dates, force custom behavior even if custom wasn't selected.
+        if (($range === 'custom' || $dateTouched) && ($request->filled('from') || $request->filled('to'))) {
+            $from = $request->get('from') ?: null;
+            $to = $request->get('to') ?: null;
+            return [$from, $to, 'custom'];
+        }
+
+        // Backward compatibility: old links may only send from/to without range.
+        if (!$request->filled('range') && ($request->filled('from') || $request->filled('to'))) {
+            $from = $request->get('from') ?: null;
+            $to = $request->get('to') ?: null;
+            return [$from, $to, 'custom'];
+        }
+
+        // On initial load (no explicit filters applied), show full list.
+        $hasAnyFilterInput = $request->hasAny(['apply', 'range', 'group_id', 'item_id', 'q', 'from', 'to']);
+        if (!$hasAnyFilterInput || $range === '' || $range === 'all') {
+            return [null, null, 'all'];
+        }
+
         if ($range === 'today') {
+            // Only today's entries
             $from = $now->toDateString();
             $to = $now->toDateString();
         } elseif ($range === 'weekly') {
-            $from = $now->copy()->startOfWeek()->toDateString();
-            $to = $now->copy()->endOfWeek()->toDateString();
+            // Last 7 days including today
+            $from = $now->copy()->subDays(6)->toDateString();
+            $to = $now->toDateString();
         } elseif ($range === 'monthly') {
-            $from = $now->copy()->startOfMonth()->toDateString();
-            $to = $now->copy()->endOfMonth()->toDateString();
+            // Last 30 days including today
+            $from = $now->copy()->subDays(29)->toDateString();
+            $to = $now->toDateString();
         } elseif ($range === 'yearly') {
-            $from = $now->copy()->startOfYear()->toDateString();
-            $to = $now->copy()->endOfYear()->toDateString();
-        } elseif ($range === 'custom') {
-            $from = $request->get('from') ?: null;
-            $to = $request->get('to') ?: null;
-        } elseif ($request->filled('from') || $request->filled('to')) {
-            // Backward compatible
-            $from = $request->get('from') ?: null;
-            $to = $request->get('to') ?: null;
+            // Last 365 days including today
+            $from = $now->copy()->subDays(364)->toDateString();
+            $to = $now->toDateString();
         }
 
-        return [$from, $to];
+        return [$from, $to, $range];
     }
 
     private function getRows(Request $request, ?string $from, ?string $to)
@@ -200,6 +226,13 @@ class BalanceReportController extends Controller
                 DB::raw("SUM(CASE WHEN stock_ledger.txn_type = 'ISSUE_RETURN_IN' THEN (stock_ledger.qty_in * IFNULL(stock_ledger.unit_price,0)) ELSE 0 END) as issue_return_amount"),
                 DB::raw("SUM(CASE WHEN stock_ledger.txn_type = 'PURCHASE_RETURN_OUT' THEN stock_ledger.qty_out ELSE 0 END) as purchase_return_qty"),
                 DB::raw("SUM(CASE WHEN stock_ledger.txn_type = 'PURCHASE_RETURN_OUT' THEN (stock_ledger.qty_out * IFNULL(stock_ledger.unit_price,0)) ELSE 0 END) as purchase_return_amount"),
+                DB::raw("(SELECT sl2.unit_price
+                    FROM stock_ledger sl2
+                    WHERE sl2.item_id = items.id
+                      AND sl2.unit_price IS NOT NULL
+                      AND sl2.unit_price > 0
+                    ORDER BY sl2.txn_date DESC, sl2.id DESC
+                    LIMIT 1) as latest_known_price"),
             ])
             ->when($from, fn($q) => $q->whereDate('stock_ledger.txn_date', '>=', $from))
             ->when($to, fn($q) => $q->whereDate('stock_ledger.txn_date', '<=', $to));
@@ -225,16 +258,18 @@ class BalanceReportController extends Controller
             ->orderBy('items.item_code')
             ->get()
             ->map(function ($r) {
-                $p = (int)$r->purchased_qty;
-                $i = (int)$r->issued_qty;
-                $ir = (int)$r->issue_return_qty;
-                $pr = (int)$r->purchase_return_qty;
+                $p = (float)$r->purchased_qty;
+                $i = (float)$r->issued_qty;
+                $ir = (float)$r->issue_return_qty;
+                $pr = (float)$r->purchase_return_qty;
                 $r->net_balance = $p + $ir - $i - $pr;
                 $pa = (float)($r->purchased_amount ?? 0);
                 $ia = (float)($r->issued_amount ?? 0);
                 $ira = (float)($r->issue_return_amount ?? 0);
                 $pra = (float)($r->purchase_return_amount ?? 0);
                 $r->net_amount = $pa + $ira - $ia - $pra;
+                $latestKnownPrice = (float)($r->latest_known_price ?? 0);
+                $r->per_item_price = $r->net_balance != 0.0 ? ($r->net_amount / $r->net_balance) : $latestKnownPrice;
                 return $r;
             });
     }

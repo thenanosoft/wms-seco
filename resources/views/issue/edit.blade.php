@@ -64,14 +64,14 @@
                     <tbody class="divide-y divide-gray-100">
                         @foreach($issue->lines as $idx => $l)
                             @php
-                                $retQty = (int)($returned[$l->id] ?? 0);
+                                $retQty = (float)($returned[$l->id] ?? 0);
                             @endphp
                             <tr class="hover:bg-gray-50">
                                 <td class="px-4 py-3">
                                     <div class="font-medium">{{ $l->item->item_code }} - {{ $l->item->name }}</div>
                                     <div class="text-xs text-gray-500">Batch line: {{ $l->purchase_line_id }}</div>
                                 </td>
-                                <td class="px-4 py-3 text-right">{{ number_format((float)$l->issue_price, 4) }}</td>
+                                <td class="px-4 py-3 text-right">{{ (float)$l->issue_price }}</td>
                                 <td class="px-4 py-3 text-right">{{ $l->quantity }}</td>
                                 <td class="px-4 py-3 text-right">{{ $retQty }}</td>
                                 <td class="px-4 py-3 text-right">

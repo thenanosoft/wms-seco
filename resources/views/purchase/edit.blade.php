@@ -107,7 +107,7 @@
                                     <input type="text" class="w-72 rounded-lg border-gray-200" :name="`lines[${idx}][specification]`" x-model="line.specification" placeholder="Optional">
                                 </td>
                                 <td class="px-3 py-2">
-                                    <input type="number" step="0.0001" min="0" class="w-28 rounded-lg border-gray-200" :name="`lines[${idx}][purchase_price]`" x-model="line.purchase_price" placeholder="Pending">
+                                    <input type="number" step="0.00000001" min="0" class="w-28 rounded-lg border-gray-200" :name="`lines[${idx}][purchase_price]`" x-model="line.purchase_price" placeholder="Pending">
                                     <div class="mt-1 text-xs text-gray-600" x-show="line.purchase_price === ''">Price pending</div>
                                 </td>
                                 <td class="px-3 py-2">

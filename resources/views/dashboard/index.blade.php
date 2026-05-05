@@ -2,11 +2,10 @@
 
 @section('content')
 <div class="max-w-7xl mx-auto space-y-6">
-
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-2xl font-semibold">Dashboard</h1>
-            <p class="text-sm text-gray-600">Daily overview for store operations.</p>
+            <p class="text-sm text-gray-600">Simple and effective stock overview.</p>
         </div>
 
         <div class="flex flex-wrap gap-2">
@@ -34,159 +33,105 @@
         </div>
     </div>
 
-    {{-- KPI Cards --}}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
-        <div class="rounded-xl border bg-white p-4">
-            <div class="text-sm text-gray-600">Today Purchases</div>
-            <div class="mt-2 text-2xl font-semibold">{{ number_format((float)$purchase->total, 4) }}</div>
-            <div class="text-xs text-gray-600 mt-1">Qty: {{ $purchase->qty }}</div>
-            <div class="mt-3">
-                <a href="{{ route('purchases.index') }}" class="text-sm font-medium text-gray-900 underline">
-                    View Purchases
-                </a>
-            </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-4">
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('dashboard', ['period' => 'today']) }}"
+               class="rounded-lg px-4 py-2 text-sm font-medium {{ $period === 'today' ? 'bg-gray-900 text-white' : 'border border-gray-200 hover:bg-gray-50' }}">
+                Today
+            </a>
+            <a href="{{ route('dashboard', ['period' => 'monthly']) }}"
+               class="rounded-lg px-4 py-2 text-sm font-medium {{ $period === 'monthly' ? 'bg-gray-900 text-white' : 'border border-gray-200 hover:bg-gray-50' }}">
+                Monthly (Last 30 Days)
+            </a>
+            <a href="{{ route('dashboard', ['period' => 'all']) }}"
+               class="rounded-lg px-4 py-2 text-sm font-medium {{ $period === 'all' ? 'bg-gray-900 text-white' : 'border border-gray-200 hover:bg-gray-50' }}">
+                All Time
+            </a>
         </div>
-
-        <div class="rounded-xl border bg-white p-4">
-            <div class="text-sm text-gray-600">Today Issues</div>
-            <div class="mt-2 text-2xl font-semibold">{{ number_format((float)$issue->total, 4) }}</div>
-            <div class="text-xs text-gray-600 mt-1">Qty: {{ $issue->qty }}</div>
-            <div class="mt-3">
-                <a href="{{ route('issues.index') }}" class="text-sm font-medium text-gray-900 underline">
-                    View Issues
-                </a>
-            </div>
-        </div>
-
-        <div class="rounded-xl border bg-white p-4">
-            <div class="text-sm text-gray-600">Today Return Inward</div>
-            <div class="mt-2 text-2xl font-semibold">{{ number_format($returnIn->qty, 0) }}</div>
-            <div class="text-xs text-gray-600 mt-1">Value: {{ number_format((float)$returnIn->total, 4) }}</div>
-            <div class="mt-3">
-                <a href="{{ route('returns.issue.index') }}" class="text-sm font-medium text-gray-900 underline">View Issue Returns</a>
-            </div>
-        </div>
-
-        <div class="rounded-xl border bg-white p-4">
-            <div class="text-sm text-gray-600">Today Return Outward</div>
-            <div class="mt-2 text-2xl font-semibold">{{ number_format($returnOut->qty, 0) }}</div>
-            <div class="text-xs text-gray-600 mt-1">Value: {{ number_format((float)$returnOut->total, 4) }}</div>
-            <div class="mt-3">
-                <a href="{{ route('returns.purchase.index') }}" class="text-sm font-medium text-gray-900 underline">View Purchase Returns</a>
-            </div>
-        </div>
-
     </div>
 
-    {{-- Admin Quick Actions --}}
-    @if(auth()->user()?->role === 'admin')
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div class="rounded-xl border bg-white p-5">
-                <div class="text-sm font-semibold">Admin Quick Actions</div>
-                <div class="mt-3 flex flex-wrap gap-2">
-                    <a href="{{ route('groups.index') }}" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Groups</a>
-                    <a href="{{ route('items.index') }}" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Items</a>
-                    <a href="{{ route('purchases.items.index') }}" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Purchase Items List</a>
-                    <a href="{{ route('backup.index') }}" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Backup</a>
-                    <a href="{{ route('settings.index') }}" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Settings</a>
-                </div>
-            </div>
-
-            <div class="rounded-xl border bg-white p-5">
-                <div class="text-sm font-semibold">Exports</div>
-                <div class="mt-1 text-xs text-gray-600">Download CSV/PDF quickly.</div>
-                <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                    <div>
-                        <label class="block text-xs text-gray-600">Data</label>
-                        <select id="exportData" class="mt-1 w-full rounded-lg border-gray-200">
-                            <option value="stock">Stock</option>
-                            <option value="purchases">Purchases</option>
-                            <option value="issues">Issues</option>
-                            <option value="issue_returns">Issue Returns</option>
-                            <option value="purchase_returns">Purchase Returns</option>
-                            <option value="ledger">Full History</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-gray-600">Format</label>
-                        <select id="exportFormat" class="mt-1 w-full rounded-lg border-gray-200">
-                            <option value="pdf" selected>PDF</option>
-                            <option value="csv">CSV</option>
-                            <option value="print">Print</option>
-                        </select>
-                    </div>
-                    <div class="flex gap-2">
-                        <a id="exportGo" href="{{ route('export.stock.pdf') }}" class="w-full text-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">Export</a>
-                    </div>
-                </div>
-
-                <script>
-                    (function () {
-                        const routes = {
-                            stock: { csv: "{{ route('export.stock.csv') }}", pdf: "{{ route('export.stock.pdf') }}" },
-                            purchases: { csv: "{{ route('export.purchases.csv') }}", pdf: "{{ route('export.purchases.pdf') }}" },
-                            issues: { csv: "{{ route('export.issues.csv') }}", pdf: "{{ route('export.issues.pdf') }}" },
-                            issue_returns: { csv: "{{ route('export.issue_returns.csv') }}", pdf: "{{ route('export.issue_returns.pdf') }}" },
-                            purchase_returns: { csv: "{{ route('export.purchase_returns.csv') }}", pdf: "{{ route('export.purchase_returns.pdf') }}" },
-                            ledger: { csv: "{{ route('export.ledger.csv') }}", pdf: null },
-                        };
-
-                        const dataSel = document.getElementById('exportData');
-                        const fmtSel = document.getElementById('exportFormat');
-                        const go = document.getElementById('exportGo');
-                        if (!dataSel || !fmtSel || !go) return;
-
-                        function update() {
-                            const dataKey = dataSel.value;
-                            const fmt = fmtSel.value;
-                            const map = routes[dataKey] || {};
-                            let href = null;
-                            if (fmt === 'csv') href = map.csv || null;
-                            if (fmt === 'pdf') href = map.pdf || null;
-                            if (fmt === 'print') href = map.pdf || map.csv || null;
-                            if (!href) {
-                                go.classList.add('opacity-50', 'pointer-events-none');
-                                go.textContent = 'Not Available';
-                                go.removeAttribute('href');
-                                return;
-                            }
-                            go.classList.remove('opacity-50', 'pointer-events-none');
-                            go.textContent = (fmt === 'print') ? 'Open to Print' : 'Export';
-                            go.setAttribute('href', href);
-                            go.setAttribute('target', (fmt === 'print') ? '_blank' : '_self');
-                        }
-
-                        dataSel.addEventListener('change', update);
-                        fmtSel.addEventListener('change', update);
-                        update();
-                    })();
-                </script>
-            </div>
-
-            <div class="rounded-xl border bg-white p-5">
-                <div class="text-sm font-semibold">Totals</div>
-                <div class="mt-3">
-                    <div class="text-sm text-gray-600">Total Items</div>
-                    <div class="mt-1 text-2xl font-semibold">{{ $itemsCount }}</div>
-                    <div class="mt-4 grid grid-cols-1 gap-2 text-sm">
-                        <div class="flex items-center justify-between"><span class="text-gray-600">Total In Value</span><span class="font-semibold">{{ number_format((float)$inValue, 4) }}</span></div>
-                        <div class="flex items-center justify-between"><span class="text-gray-600">Total Out Value</span><span class="font-semibold">{{ number_format((float)$outValue, 4) }}</span></div>
-                        <div class="flex items-center justify-between"><span class="text-gray-600">Balance Value</span><span class="font-semibold">{{ number_format((float)$balanceValue, 4) }}</span></div>
-                    </div>
-                </div>
-            </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="rounded-xl border bg-white p-4">
+            <div class="text-sm text-gray-600">Purchases (Value)</div>
+            <div class="mt-2 text-2xl font-semibold">{{ number_format((float)$currentStats->purchase_total, 4) }}</div>
+            <div class="text-xs text-gray-600 mt-1">Qty: {{ rtrim(rtrim(number_format((float)$currentStats->purchase_qty, 8, '.', ''), '0'), '.') }}</div>
         </div>
-    @else
-        <div class="rounded-xl border bg-white p-5">
-            <div class="text-sm font-semibold">Quick Actions</div>
-            <div class="mt-3 flex flex-wrap gap-2">
-                <a href="{{ route('purchases.create') }}" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">New Purchase</a>
-                <a href="{{ route('issues.create') }}" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">New Issue</a>
-                <a href="{{ route('returns.index') }}" class="rounded-lg border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50">Returns</a>
-            </div>
+
+        <div class="rounded-xl border bg-white p-4">
+            <div class="text-sm text-gray-600">Issues (Value)</div>
+            <div class="mt-2 text-2xl font-semibold">{{ number_format((float)$currentStats->issue_total, 4) }}</div>
+            <div class="text-xs text-gray-600 mt-1">Qty: {{ rtrim(rtrim(number_format((float)$currentStats->issue_qty, 8, '.', ''), '0'), '.') }}</div>
         </div>
-    @endif
+
+        <div class="rounded-xl border bg-white p-4">
+            <div class="text-sm text-gray-600">Returns Inward (Value)</div>
+            <div class="mt-2 text-2xl font-semibold">{{ number_format((float)$currentStats->return_in_total, 4) }}</div>
+            <div class="text-xs text-gray-600 mt-1">Qty: {{ rtrim(rtrim(number_format((float)$currentStats->return_in_qty, 8, '.', ''), '0'), '.') }}</div>
+        </div>
+
+        <div class="rounded-xl border bg-white p-4">
+            <div class="text-sm text-gray-600">Net Movement (Value)</div>
+            <div class="mt-2 text-2xl font-semibold">{{ number_format((float)$currentStats->net_total, 4) }}</div>
+            <div class="text-xs text-gray-600 mt-1">Purchase + Inward Return - Issue - Outward Return</div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div class="rounded-xl border bg-white p-4">
+            <div class="text-sm text-gray-600">Available Stock Qty (Collective)</div>
+            <div class="mt-2 text-2xl font-semibold">{{ rtrim(rtrim(number_format((float)$totalAvailableQty, 8, '.', ''), '0'), '.') }}</div>
+            <div class="text-xs text-gray-600 mt-1">All items combined</div>
+        </div>
+        <div class="rounded-xl border bg-white p-4">
+            <div class="text-sm text-gray-600">Current Stock Value</div>
+            <div class="mt-2 text-2xl font-semibold">{{ number_format((float)$balanceValue, 4) }}</div>
+            <div class="text-xs text-gray-600 mt-1">Based on ledger prices</div>
+        </div>
+        <div class="rounded-xl border bg-white p-4">
+            <div class="text-sm text-gray-600">Items In Stock</div>
+            <div class="mt-2 text-2xl font-semibold">{{ $itemsInStock }}</div>
+            <div class="text-xs text-gray-600 mt-1">Out of {{ $itemsCount }} total items</div>
+        </div>
+        <div class="rounded-xl border bg-white p-4">
+            <div class="text-sm text-gray-600">Pending Price Batches</div>
+            <div class="mt-2 text-2xl font-semibold">{{ $pendingPriceBatches }}</div>
+            <div class="text-xs text-gray-600 mt-1">Need price confirmation</div>
+        </div>
+    </div>
+
+    <div class="rounded-xl border bg-white overflow-hidden">
+        <div class="px-4 py-3 border-b border-gray-200">
+            <h2 class="text-sm font-semibold">Today vs Monthly vs All (Quick Compare)</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 text-gray-600">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-semibold">Period</th>
+                        <th class="px-4 py-3 text-right font-semibold">Purchase Value</th>
+                        <th class="px-4 py-3 text-right font-semibold">Issue Value</th>
+                        <th class="px-4 py-3 text-right font-semibold">Inward Return</th>
+                        <th class="px-4 py-3 text-right font-semibold">Outward Return</th>
+                        <th class="px-4 py-3 text-right font-semibold">Net Movement</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @php($labels = ['today' => 'Today', 'monthly' => 'Monthly (30 Days)', 'all' => 'All Time'])
+                    @foreach(['today','monthly','all'] as $key)
+                        @php($s = $periodStats[$key])
+                        <tr class="{{ $period === $key ? 'bg-indigo-50/50' : '' }}">
+                            <td class="px-4 py-3 font-medium">{{ $labels[$key] }}</td>
+                            <td class="px-4 py-3 text-right">{{ number_format((float)$s->purchase_total, 4) }}</td>
+                            <td class="px-4 py-3 text-right">{{ number_format((float)$s->issue_total, 4) }}</td>
+                            <td class="px-4 py-3 text-right">{{ number_format((float)$s->return_in_total, 4) }}</td>
+                            <td class="px-4 py-3 text-right">{{ number_format((float)$s->return_out_total, 4) }}</td>
+                            <td class="px-4 py-3 text-right font-semibold">{{ number_format((float)$s->net_total, 4) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
 
 </div>
 @endsection

@@ -48,7 +48,10 @@
     <footer class="mt-10 border-t text-center bg-white">
     <div class="max-w text-center px-4 py-3 text-md text-gray-600">
         <div>
-            © {{ date('Y') }} {{ config('app.name') }} - Designed by Farhan Ellahi Owned by Nanosoft
+            © {{ date('Y') }} {{ config('app.name') }} - Designed by Farhan Ellahi Owned by
+            <a href="https://thenanosoft.com" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">Nanosoft</a> |
+            <a href="https://thenanosoft.com" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">thenanosoft.com</a> |
+            <a href="https://wa.me/923054869663" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">+92 305 4869663</a>
         </div>
     </div>
 </footer>

@@ -20,8 +20,8 @@ class FifoService
             'purchase_date' => $purchaseDate,
             'item_id' => $line->item_id,
             'specification' => $line->specification,
-            'qty_purchased' => round((float)$line->quantity, 4),
-            'qty_available' => round((float)$line->quantity, 4),
+            'qty_purchased' => (float)$line->quantity,
+            'qty_available' => (float)$line->quantity,
             'unit_price' => $line->purchase_price,
         ]);
     }
@@ -42,14 +42,14 @@ class FifoService
             ->get();
 
         $out = [];
-        $remaining = round((float)$qtyNeeded, 4);
+        $remaining = (float)$qtyNeeded;
         foreach ($batches as $batch) {
             if ($remaining <= 0) break;
             $avail = (float)$batch->qty_available;
-            $take = round(min($remaining, $avail), 4);
+            $take = min($remaining, $avail);
             if ($take <= 0) continue;
             $out[] = ['batch' => $batch, 'qty' => $take];
-            $remaining = round($remaining - $take, 4);
+            $remaining -= $take;
         }
 
         if ($remaining > 0) return [];
@@ -61,7 +61,7 @@ class FifoService
      */
     public function updateBatchQuantityFromPurchaseLine(StockBatch $batch, float $newPurchasedQty): void
     {
-        $newPurchasedQty = max(0, round((float)$newPurchasedQty, 4));
+        $newPurchasedQty = max(0, (float)$newPurchasedQty);
 
         $consumed = (float)$batch->qty_purchased - (float)$batch->qty_available;
         if ($newPurchasedQty < $consumed) {
@@ -69,7 +69,7 @@ class FifoService
         }
 
         $batch->qty_purchased = $newPurchasedQty;
-        $batch->qty_available = round($newPurchasedQty - $consumed, 4);
+        $batch->qty_available = $newPurchasedQty - $consumed;
         $batch->save();
     }
 
@@ -78,7 +78,7 @@ class FifoService
      */
     public function propagateBatchPrice(int $purchaseLineId, ?float $newUnitPrice): void
     {
-        $price = $newUnitPrice !== null ? round($newUnitPrice, 4) : null;
+        $price = $newUnitPrice !== null ? (float)$newUnitPrice : null;
         DB::transaction(function () use ($purchaseLineId, $price) {
             // Batch price
             StockBatch::query()
@@ -89,7 +89,7 @@ class FifoService
             $pl = PurchaseLine::query()->where('id', $purchaseLineId)->lockForUpdate()->first();
             if ($pl) {
                 $pl->purchase_price = $price;
-                $pl->line_total = $price === null ? 0 : round((float)$pl->quantity * $price, 4);
+                $pl->line_total = $price === null ? 0 : (float)$pl->quantity * $price;
                 $pl->save();
             }
 
@@ -107,7 +107,7 @@ class FifoService
 
             foreach ($issueLines as $il) {
                 $il->issue_price = $price;
-                $il->line_total = $price === null ? 0 : round((float)$il->quantity * $price, 4);
+                $il->line_total = $price === null ? 0 : (float)$il->quantity * $price;
                 $il->save();
 
                 StockLedger::query()
@@ -123,7 +123,7 @@ class FifoService
                 ->get();
             foreach ($issueReturnLines as $irl) {
                 $irl->issue_price = $price;
-                $irl->line_total = $price === null ? 0 : round((float)$irl->quantity * $price, 4);
+                $irl->line_total = $price === null ? 0 : (float)$irl->quantity * $price;
                 $irl->save();
 
                 StockLedger::query()
@@ -140,7 +140,7 @@ class FifoService
                 ->get();
             foreach ($purchaseReturnLines as $prl) {
                 $prl->purchase_price = $price;
-                $prl->line_total = $price === null ? 0 : round((float)$prl->quantity * $price, 4);
+                $prl->line_total = $price === null ? 0 : (float)$prl->quantity * $price;
                 $prl->save();
 
                 StockLedger::query()

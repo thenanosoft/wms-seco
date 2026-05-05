@@ -18,7 +18,18 @@ class IssueController extends Controller
 {
     public function index(Request $request)
     {
-        $q = Issue::query()->withCount('lines')->orderByDesc('issue_date')->orderByDesc('id');
+        $q = Issue::query()
+            ->with('creator')
+            ->with([
+                'lines' => function ($qq) {
+                    $qq->select(['id', 'issue_id', 'item_id', 'quantity', 'issue_price', 'line_total'])
+                        ->with(['item:id,item_code,name'])
+                        ->orderBy('id');
+                },
+            ])
+            ->withCount('lines')
+            ->orderByDesc('issue_date')
+            ->orderByDesc('id');
 
         if ($request->filled('from')) $q->whereDate('issue_date', '>=', $request->from);
         if ($request->filled('to')) $q->whereDate('issue_date', '<=', $request->to);
@@ -56,7 +67,7 @@ class IssueController extends Controller
             ->orderBy('items.item_code')
             ->get()
             ->map(function ($it) {
-                $it->available_stock = round((float)($it->available_stock ?? 0), 4);
+                $it->available_stock = (float)($it->available_stock ?? 0);
                 $it->fifo_price_pending = $it->fifo_next_price === null;
                 // keep as numeric for JS calculations
                 $it->fifo_next_price = $it->fifo_next_price === null ? 0 : (float)$it->fifo_next_price;
@@ -76,7 +87,7 @@ class IssueController extends Controller
             $it->fifo_batches = $list->map(function ($b) {
                 return [
                     'id' => $b->id,
-                    'qty_available' => round((float)$b->qty_available, 4),
+                    'qty_available' => (float)$b->qty_available,
                     'unit_price' => $b->unit_price === null ? 0 : (float)$b->unit_price,
                     'purchase_date' => (string)$b->purchase_date,
                 ];
@@ -113,7 +124,7 @@ class IssueController extends Controller
                 $stock->issueItemFIFO(
                     issue: $issue,
                     itemId: (int)$line['item_id'],
-                    qty: round((float)$line['quantity'], 4),
+                    qty: (float)$line['quantity'],
                     specification: $line['specification'] ?? null,
                 );
             }
@@ -134,11 +145,11 @@ class IssueController extends Controller
         // Prepare view-safe data (avoid Blade-side PHP blocks, prevent parse errors)
         $lines = $issue->lines->map(function ($line) use ($returned) {
             $retQty = (float)($returned[$line->id] ?? 0);
-            $remQty = round((float)$line->quantity - $retQty, 4);
+            $remQty = (float)$line->quantity - $retQty;
             if ($remQty < 0) $remQty = 0;
 
             $price = $line->issue_price;
-            $netTotal = ($price === null) ? 0 : round($remQty * (float)$price, 4);
+            $netTotal = ($price === null) ? 0 : $remQty * (float)$price;
 
             return (object)[
                 'id' => $line->id,
@@ -155,10 +166,10 @@ class IssueController extends Controller
         });
 
         $totals = (object)[
-            'total_qty' => round($lines->sum('quantity'), 4),
-            'total_returned' => round($lines->sum('returned_qty'), 4),
-            'total_remaining' => round($lines->sum('remaining_qty'), 4),
-            'total_net_amount' => round($lines->sum('net_line_total'), 4),
+            'total_qty' => (float)$lines->sum('quantity'),
+            'total_returned' => (float)$lines->sum('returned_qty'),
+            'total_remaining' => (float)$lines->sum('remaining_qty'),
+            'total_net_amount' => (float)$lines->sum('net_line_total'),
         ];
 
         return view('issue.show', compact('issue', 'returned', 'lines', 'totals'));
@@ -223,7 +234,7 @@ class IssueController extends Controller
 
                 $retQty = (float)($returned[$line->id] ?? 0);
                 $remove = (bool)($row['remove'] ?? false);
-                $newQty = isset($row['new_quantity']) ? round((float)$row['new_quantity'], 4) : (float)$line->quantity;
+                $newQty = isset($row['new_quantity']) ? (float)$row['new_quantity'] : (float)$line->quantity;
 
                 if ($remove) {
                     if ($retQty > 0) {
@@ -232,7 +243,7 @@ class IssueController extends Controller
                     // Reverse entire issued qty back to same batch
                     $batch = StockBatch::where('purchase_line_id', $line->purchase_line_id)->first();
                     if ($batch) {
-                        $batch->qty_available = round((float)$batch->qty_available + (float)$line->quantity, 4);
+                        $batch->qty_available = (float)$batch->qty_available + (float)$line->quantity;
                         $batch->save();
                     }
                     // Delete matching ledger row for this line only (do not rebuild whole issue ledger)
@@ -257,12 +268,12 @@ class IssueController extends Controller
                     $giveBack = abs($diff);
                     $batch = StockBatch::where('purchase_line_id', $line->purchase_line_id)->lockForUpdate()->first();
                     if ($batch) {
-                        $batch->qty_available = round((float)$batch->qty_available + $giveBack, 4);
+                        $batch->qty_available = (float)$batch->qty_available + $giveBack;
                         $batch->save();
                     }
 
                     $line->quantity = $newQty;
-                    $line->line_total = round($newQty * (float)$line->issue_price, 4);
+                    $line->line_total = $newQty * (float)$line->issue_price;
                     $line->save();
 
                     // Update ledger row in-place
@@ -272,8 +283,8 @@ class IssueController extends Controller
                         ->where('ref_line_id', $line->id)
                         ->update([
                             'txn_date' => $issue->issue_date,
-                            'qty_out' => round((float)$line->quantity, 4),
-                            'unit_price' => round((float)$line->issue_price, 4),
+                            'qty_out' => (float)$line->quantity,
+                            'unit_price' => (float)$line->issue_price,
                             'specification_snapshot' => $line->specification,
                         ]);
                     continue;
@@ -286,13 +297,13 @@ class IssueController extends Controller
                     $batch = StockBatch::where('purchase_line_id', $line->purchase_line_id)->lockForUpdate()->first();
                     if ($batch && (float)$batch->qty_available > 0) {
                         $avail = (float)$batch->qty_available;
-                        $takeSame = round(min($remaining, $avail), 4);
+                        $takeSame = min($remaining, $avail);
                         if ($takeSame > 0) {
-                            $batch->qty_available = round($avail - $takeSame, 4);
+                            $batch->qty_available = $avail - $takeSame;
                             $batch->save();
 
-                            $line->quantity = round($oldQty + $takeSame, 4);
-                            $line->line_total = round((float)$line->quantity * (float)$line->issue_price, 4);
+                            $line->quantity = $oldQty + $takeSame;
+                            $line->line_total = (float)$line->quantity * (float)$line->issue_price;
                             $line->save();
 
                             \App\Models\StockLedger::query()
@@ -301,12 +312,12 @@ class IssueController extends Controller
                                 ->where('ref_line_id', $line->id)
                                 ->update([
                                     'txn_date' => $issue->issue_date,
-                                    'qty_out' => round((float)$line->quantity, 4),
-                                    'unit_price' => round((float)$line->issue_price, 4),
+                                    'qty_out' => (float)$line->quantity,
+                                    'unit_price' => (float)$line->issue_price,
                                     'specification_snapshot' => $line->specification,
                                 ]);
 
-                            $remaining = round($remaining - $takeSame, 4);
+                            $remaining -= $takeSame;
                         }
                     }
 
@@ -325,7 +336,7 @@ class IssueController extends Controller
 
             // Add new items added during edit (FIFO allocation creates new issue lines + ledgers)
             foreach (($data['new_lines'] ?? []) as $nl) {
-                $qty = round((float)($nl['quantity'] ?? 0), 4);
+                $qty = (float)($nl['quantity'] ?? 0);
                 if ($qty <= 0) continue;
 
                 $stock->issueItemFIFO(
@@ -365,8 +376,8 @@ class IssueController extends Controller
                         'ref_id' => $issue->id,
                         'ref_line_id' => $l->id,
                         'item_id' => $l->item_id,
-                        'qty_out' => round((float)$l->quantity, 4),
-                        'unit_price' => round((float)$l->issue_price, 4),
+                        'qty_out' => (float)$l->quantity,
+                        'unit_price' => (float)$l->issue_price,
                         'specification_snapshot' => $l->specification,
                         'created_by' => $issue->created_by,
                     ]);
@@ -374,8 +385,8 @@ class IssueController extends Controller
                     $ledger->update([
                         'txn_date' => $issue->issue_date,
                         'item_id' => $l->item_id,
-                        'qty_out' => round((float)$l->quantity, 4),
-                        'unit_price' => round((float)$l->issue_price, 4),
+                        'qty_out' => (float)$l->quantity,
+                        'unit_price' => (float)$l->issue_price,
                         'specification_snapshot' => $l->specification,
                     ]);
                 }
@@ -399,7 +410,7 @@ class IssueController extends Controller
                 if ($line) {
                     $batch = StockBatch::where('purchase_line_id', $line->purchase_line_id)->first();
                     if ($batch) {
-                        $batch->qty_available = round((float)$batch->qty_available - (float)$rl->quantity, 4);
+                        $batch->qty_available = (float)$batch->qty_available - (float)$rl->quantity;
                         if ($batch->qty_available < 0) $batch->qty_available = 0;
                         $batch->save();
                     }
@@ -410,7 +421,7 @@ class IssueController extends Controller
             foreach ($issue->lines as $l) {
                 $batch = StockBatch::where('purchase_line_id', $l->purchase_line_id)->first();
                 if ($batch) {
-                    $batch->qty_available = round((float)$batch->qty_available + (float)$l->quantity, 4);
+                    $batch->qty_available = (float)$batch->qty_available + (float)$l->quantity;
                     $batch->save();
                 }
             }

@@ -26,9 +26,26 @@ class ValuationController extends Controller
             ->leftJoin('issue_return_lines as irl', 'irl.issue_line_id', '=', 'il.id')
             ->leftJoin('issue_return_transactions as irt', 'irt.id', '=', 'irl.issue_return_transaction_id')
             ->whereDate('b.purchase_date', '<=', $asOf)
-            ->groupBy('b.id','b.item_id','b.purchase_line_id','b.purchase_date','b.qty_purchased','b.unit_price','i.item_code','i.name','g.group_code')
+            ->when($request->filled('group_id'), function ($q) use ($request) {
+                $q->where('i.group_id', (int)$request->input('group_id'));
+            })
+            ->when($request->filled('item_id'), function ($q) use ($request) {
+                $q->where('b.item_id', (int)$request->input('item_id'));
+            })
+            ->when($request->filled('q'), function ($q) use ($request) {
+                $term = trim((string)$request->input('q'));
+                $q->where(function ($w) use ($term) {
+                    $w->where('i.item_code', 'like', "%{$term}%")
+                      ->orWhere('i.name', 'like', "%{$term}%")
+                      ->orWhere('g.group_code', 'like', "%{$term}%");
+                });
+            })
+            ->when($request->boolean('pending_only'), function ($q) {
+                $q->whereNull('b.unit_price');
+            })
+            ->groupBy('b.id','b.item_id','b.purchase_line_id','b.purchase_date','b.qty_purchased','b.unit_price','i.item_code','i.name','g.id','g.group_code')
             ->selectRaw('b.id as batch_id, b.item_id, b.purchase_line_id, b.purchase_date,
-                i.item_code, i.name as item_name, g.group_code,
+                i.item_code, i.name as item_name, g.id as group_id, g.group_code,
                 b.qty_purchased,
                 COALESCE(SUM(CASE WHEN prt.return_date <= ? THEN prl.quantity ELSE 0 END),0) as purchase_return_out,
                 COALESCE(SUM(CASE WHEN iss.issue_date <= ? THEN il.quantity ELSE 0 END),0) as issue_out,
@@ -66,19 +83,53 @@ class ValuationController extends Controller
                 'group_code' => $first->group_code,
                 'item_code' => $first->item_code,
                 'item_name' => $first->item_name,
-                'qty' => (int)$qty,
-                'value' => (int)$value,
+                'qty' => (float)$qty,
+                'value' => (float)$value,
+                'avg_rate' => (float)$qty > 0 ? ((float)$value / (float)$qty) : 0.0,
                 'pending_batches' => (int)$pendingBatches,
             ];
         })->sortBy(['group_code','item_code'])->values();
 
-        $grandTotal = (int)$summary->sum('value');
+        $grandTotal = (float)$summary->sum('value');
+        $totalQty = (float)$summary->sum('qty');
+        $pendingBatches = (int)$batches->where('price_pending', true)->count();
+        $pendingItems = (int)$summary->where('pending_batches', '>', 0)->count();
+
+        $groupSummary = $summary->groupBy('group_code')->map(function ($rows, $groupCode) {
+            return (object)[
+                'group_code' => (string)$groupCode,
+                'items_count' => (int)$rows->count(),
+                'qty' => (float)$rows->sum('qty'),
+                'value' => (float)$rows->sum('value'),
+                'pending_items' => (int)$rows->where('pending_batches', '>', 0)->count(),
+            ];
+        })->sortByDesc('value')->values();
+
+        $topItems = $summary->sortByDesc('value')->take(10)->values()->map(function ($row) use ($grandTotal) {
+            $row->value_share = $grandTotal > 0 ? ((float)$row->value / $grandTotal) * 100 : 0;
+            return $row;
+        });
+
+        $groups = DB::table('groups')->orderBy('group_code')->get(['id', 'group_code', 'group_name']);
+        $allItems = DB::table('items')->orderBy('item_code')->get(['id', 'group_id', 'item_code', 'name']);
+        $selectedGroupId = $request->filled('group_id') ? (int)$request->input('group_id') : null;
+        $items = $selectedGroupId
+            ? $allItems->where('group_id', $selectedGroupId)->values()
+            : $allItems;
 
         return view('reports.valuation', [
             'asOf' => $asOf,
             'summary' => $summary,
             'grandTotal' => $grandTotal,
             'batches' => $batches,
+            'totalQty' => $totalQty,
+            'pendingBatches' => $pendingBatches,
+            'pendingItems' => $pendingItems,
+            'groupSummary' => $groupSummary,
+            'topItems' => $topItems,
+            'groups' => $groups,
+            'items' => $items,
+            'allItems' => $allItems,
         ]);
     }
 }
