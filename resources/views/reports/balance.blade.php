@@ -81,29 +81,32 @@
                     <tr>
                         <th class="px-3 py-2 text-left font-semibold">Group</th>
                         <th class="px-3 py-2 text-left font-semibold">Item</th>
+                        <th class="px-3 py-2 text-right font-semibold">Opening Qty</th>
                         <th class="px-3 py-2 text-right font-semibold">Purchased Qty</th>
                         <th class="px-3 py-2 text-right font-semibold">Purchased Amount</th>
                         <th class="px-3 py-2 text-right font-semibold">Issued Qty</th>
                         <th class="px-3 py-2 text-right font-semibold">Issued Amount</th>
-                        <th class="px-3 py-2 text-right font-semibold">Available Qty</th>
+                        <th class="px-3 py-2 text-right font-semibold">Closing Qty</th>
                         <th class="px-3 py-2 text-right font-semibold">Per Item Price</th>
                         <th class="px-3 py-2 text-right font-semibold">Net Amount</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
+                    @php($tO=0)
                     @php($tP=0)
                     @php($tPA=0)
                     @php($tI=0)
                     @php($tIA=0)
-                    @php($tN=0)
+                    @php($tC=0)
                     @php($tUnit=0)
                     @php($tNA=0)
                     @forelse($rows as $r)
+                        @php($tO += (float)($r->opening_qty ?? 0))
                         @php($tP += (float)$r->purchased_qty)
                         @php($tPA += (float)($r->purchased_amount ?? 0))
                         @php($tI += (float)$r->issued_qty)
                         @php($tIA += (float)($r->issued_amount ?? 0))
-                        @php($tN += (float)$r->net_balance)
+                        @php($tC += (float)($r->closing_qty ?? 0))
                         @php($tUnit += (float)($r->per_item_price ?? 0))
                         @php($tNA += (float)($r->net_amount ?? 0))
                         <tr>
@@ -113,28 +116,30 @@
                                     {{ $r->item_code }} - {{ $r->item_name }}
                                 </a>
                             </td>
+                            <td class="px-3 py-2 text-right">{{ rtrim(rtrim(number_format((float)($r->opening_qty ?? 0), 8, '.', ''), '0'), '.') }}</td>
                             <td class="px-3 py-2 text-right">{{ rtrim(rtrim(number_format((float)$r->purchased_qty, 8, '.', ''), '0'), '.') }}</td>
                             <td class="px-3 py-2 text-right">{{ number_format((float)($r->purchased_amount ?? 0),4) }}</td>
                             <td class="px-3 py-2 text-right">{{ rtrim(rtrim(number_format((float)$r->issued_qty, 8, '.', ''), '0'), '.') }}</td>
                             <td class="px-3 py-2 text-right">{{ number_format((float)($r->issued_amount ?? 0),4) }}</td>
-                            <td class="px-3 py-2 text-right font-semibold">{{ rtrim(rtrim(number_format((float)$r->net_balance, 8, '.', ''), '0'), '.') }}</td>
+                            <td class="px-3 py-2 text-right font-semibold">{{ rtrim(rtrim(number_format((float)($r->closing_qty ?? 0), 8, '.', ''), '0'), '.') }}</td>
                             <td class="px-3 py-2 text-right">{{ number_format((float)($r->per_item_price ?? 0), 4) }}</td>
                             <td class="px-3 py-2 text-right font-semibold">{{ number_format((float)($r->net_amount ?? 0), 4) }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-4 py-8 text-center text-gray-500">No records found for this filter.</td>
+                            <td colspan="10" class="px-4 py-8 text-center text-gray-500">No records found for this filter.</td>
                         </tr>
                     @endforelse
                 </tbody>
                 <tfoot class="bg-gray-50">
                     <tr class="font-semibold">
                         <td class="px-3 py-2 text-right" colspan="2">Totals</td>
+                        <td class="px-3 py-2 text-right">{{ rtrim(rtrim(number_format((float)$tO, 8, '.', ''), '0'), '.') }}</td>
                         <td class="px-3 py-2 text-right">{{ rtrim(rtrim(number_format((float)$tP, 8, '.', ''), '0'), '.') }}</td>
                         <td class="px-3 py-2 text-right">{{ number_format($tPA,4) }}</td>
                         <td class="px-3 py-2 text-right">{{ rtrim(rtrim(number_format((float)$tI, 8, '.', ''), '0'), '.') }}</td>
                         <td class="px-3 py-2 text-right">{{ number_format($tIA,4) }}</td>
-                        <td class="px-3 py-2 text-right">{{ rtrim(rtrim(number_format((float)$tN, 8, '.', ''), '0'), '.') }}</td>
+                        <td class="px-3 py-2 text-right">{{ rtrim(rtrim(number_format((float)$tC, 8, '.', ''), '0'), '.') }}</td>
                         <td class="px-3 py-2 text-right">{{ number_format(count($rows) > 0 ? ($tUnit / count($rows)) : 0, 4) }}</td>
                         <td class="px-3 py-2 text-right">{{ number_format($tNA,4) }}</td>
                     </tr>
